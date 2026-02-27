@@ -7,18 +7,21 @@
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #020b14;
-    --bg2: #041220;
-    --panel: #071a2e;
-    --border: #0d3a5e;
-    --accent: #00d4ff;
-    --accent2: #00ff9f;
-    --red: #ff3860;
-    --gold: #ffd700;
-    --text: #c8e6f5;
-    --dim: #4a7a99;
-    --glow: 0 0 20px rgba(0,212,255,0.4);
-    --glow2: 0 0 20px rgba(0,255,159,0.4);
+    --bg: #0a1628;
+    --bg2: #0d1e38;
+    --panel: #112244;
+    --border: #1054A2;
+    --accent: #3C70CB;
+    --accent2: #6fa3e8;
+    --red: #e05577;
+    --gold: #f5c842;
+    --text: #d8e8ff;
+    --dim: #7a9cc8;
+    --aemdark: #1054A2;
+    --aemlight: #3C70CB;
+    --white: #FFFFFF;
+    --glow: 0 0 20px rgba(16,84,162,0.6);
+    --glow2: 0 0 20px rgba(60,112,203,0.6);
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -36,8 +39,8 @@
     position: fixed;
     inset: 0;
     background: 
-      radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.04) 0%, transparent 60%),
-      radial-gradient(ellipse at 80% 20%, rgba(0,255,159,0.04) 0%, transparent 60%);
+      radial-gradient(ellipse at 20% 50%, rgba(16,84,162,0.12) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(60,112,203,0.08) 0%, transparent 60%);
     pointer-events: none;
     z-index: 0;
   }
@@ -57,7 +60,7 @@
     z-index: 10;
     padding: 20px 40px;
     border-bottom: 1px solid var(--border);
-    background: rgba(7,26,46,0.8);
+    background: rgba(10,22,40,0.92);
     backdrop-filter: blur(10px);
     display: flex;
     align-items: center;
@@ -68,11 +71,11 @@
     font-family: 'Orbitron', monospace;
     font-size: 1.5rem;
     font-weight: 900;
-    color: var(--accent);
-    text-shadow: var(--glow);
+    color: var(--white);
+    text-shadow: 0 0 20px rgba(60,112,203,0.8);
     letter-spacing: 2px;
   }
-  .logo span { color: var(--accent2); }
+  .logo span { color: var(--aemlight); }
 
   .ticker-bar {
     display: flex;
@@ -81,7 +84,7 @@
     color: var(--dim);
   }
   .ticker-item { display: flex; gap: 6px; }
-  .ticker-up { color: var(--accent2); }
+  .ticker-up { color: #6fa3e8; }
   .ticker-down { color: var(--red); }
 
   .wallet-display {
@@ -114,14 +117,14 @@
     position: absolute;
     top: 0; left: 0; right: 0;
     height: 2px;
-    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+    background: linear-gradient(90deg, transparent, var(--aemdark), var(--aemlight), transparent);
   }
 
   .panel-title {
     font-family: 'Orbitron', monospace;
     font-size: 0.7rem;
     letter-spacing: 3px;
-    color: var(--accent);
+    color: var(--aemlight);
     text-transform: uppercase;
     margin-bottom: 16px;
   }
@@ -149,14 +152,14 @@
     width: 100%;
   }
   input:focus, select:focus {
-    border-color: var(--accent);
-    box-shadow: 0 0 10px rgba(0,212,255,0.2);
+    border-color: var(--aemdark);
+    box-shadow: 0 0 10px rgba(16,84,162,0.35);
   }
 
   .btn {
     background: transparent;
-    border: 1px solid var(--accent);
-    color: var(--accent);
+    border: 1px solid var(--aemdark);
+    color: var(--aemlight);
     font-family: 'Orbitron', monospace;
     font-size: 0.7rem;
     letter-spacing: 2px;
@@ -168,14 +171,14 @@
     white-space: nowrap;
   }
   .btn:hover {
-    background: var(--accent);
-    color: var(--bg);
+    background: var(--aemdark);
+    color: var(--white);
     box-shadow: var(--glow);
   }
-  .btn.green { border-color: var(--accent2); color: var(--accent2); }
-  .btn.green:hover { background: var(--accent2); color: var(--bg); box-shadow: var(--glow2); }
+  .btn.green { border-color: var(--aemlight); color: var(--aemlight); }
+  .btn.green:hover { background: var(--aemlight); color: var(--white); box-shadow: var(--glow2); }
   .btn.red { border-color: var(--red); color: var(--red); }
-  .btn.red:hover { background: var(--red); color: white; box-shadow: 0 0 20px rgba(255,56,96,0.4); }
+  .btn.red:hover { background: var(--red); color: white; box-shadow: 0 0 20px rgba(224,85,119,0.4); }
   .btn.gold { border-color: var(--gold); color: var(--gold); }
   .btn.gold:hover { background: var(--gold); color: var(--bg); }
   .btn:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -219,15 +222,15 @@
   }
 
   .team-row:hover, .team-row.selected {
-    border-color: var(--accent);
-    background: rgba(0,212,255,0.05);
-    box-shadow: inset 3px 0 0 var(--accent);
+    border-color: var(--aemdark);
+    background: rgba(16,84,162,0.1);
+    box-shadow: inset 3px 0 0 var(--aemdark);
   }
 
   .team-number {
     font-family: 'Orbitron', monospace;
     font-size: 0.85rem;
-    color: var(--accent);
+    color: var(--aemlight);
     font-weight: 700;
   }
 
@@ -243,7 +246,7 @@
     font-size: 0.8rem;
     text-align: right;
   }
-  .pos { color: var(--accent2); }
+  .pos { color: #6fa3e8; }
   .neg { color: var(--red); }
 
   .mini-chart {
@@ -270,7 +273,7 @@
   }
   .conf-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    background: linear-gradient(90deg, var(--aemdark), var(--aemlight));
     border-radius: 2px;
     transition: width 0.5s;
   }
@@ -351,7 +354,7 @@
     border-radius: 4px;
   }
   .alliance-box.red-a { border-color: rgba(255,56,96,0.4); background: rgba(255,56,96,0.05); }
-  .alliance-box.blue-a { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
+  .alliance-box.blue-a { border-color: rgba(60,112,203,0.6); background: rgba(16,84,162,0.1); }
 
   .alliance-label {
     font-family: 'Orbitron', monospace;
@@ -360,7 +363,7 @@
     margin-bottom: 8px;
   }
   .red-a .alliance-label { color: var(--red); }
-  .blue-a .alliance-label { color: var(--accent); }
+  .blue-a .alliance-label { color: var(--aemlight); }
 
   .alliance-team { font-size: 0.85rem; padding: 4px 0; }
 
@@ -391,7 +394,7 @@
     text-align: center;
   }
   .red-score { color: var(--red); text-shadow: 0 0 20px rgba(255,56,96,0.5); }
-  .blue-score { color: var(--accent); text-shadow: var(--glow); }
+  .blue-score { color: var(--aemlight); text-shadow: var(--glow2); }
 
   .match-period {
     font-family: 'Orbitron', monospace;
@@ -410,7 +413,7 @@
   }
   .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    background: linear-gradient(90deg, var(--aemdark), var(--aemlight));
     border-radius: 3px;
     transition: width 0.3s;
   }
@@ -442,7 +445,7 @@
     top: 80px;
     right: 20px;
     background: var(--panel);
-    border: 1px solid var(--accent);
+    border: 1px solid var(--aemdark);
     padding: 14px 20px;
     border-radius: 4px;
     font-size: 0.8rem;
@@ -453,8 +456,8 @@
     box-shadow: var(--glow);
   }
   .notification.show { transform: translateX(0); }
-  .notification.success { border-color: var(--accent2); box-shadow: var(--glow2); }
-  .notification.error { border-color: var(--red); box-shadow: 0 0 20px rgba(255,56,96,0.4); }
+  .notification.success { border-color: var(--aemlight); box-shadow: var(--glow2); }
+  .notification.error { border-color: var(--red); box-shadow: 0 0 20px rgba(224,85,119,0.4); }
 
   /* Leaderboard */
   .lb-row {
@@ -468,7 +471,7 @@
   .lb-rank { font-family: 'Orbitron', monospace; color: var(--dim); width: 24px; }
   .lb-rank.top { color: var(--gold); }
   .lb-name { flex: 1; }
-  .lb-val { font-family: 'Orbitron', monospace; color: var(--accent2); }
+  .lb-val { font-family: 'Orbitron', monospace; color: var(--aemlight); }
 
   /* Chart canvas */
   #mainChart {
@@ -525,7 +528,7 @@
     transition: all 0.2s;
   }
   .tab:hover { color: var(--text); }
-  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab.active { color: var(--white); border-bottom-color: var(--aemdark); }
 
   .tab-content { display: none; }
   .tab-content.active { display: block; }
@@ -547,11 +550,11 @@
   .stat-row .val { color: var(--text); font-family: 'Orbitron', monospace; font-size: 0.75rem; }
 
   @keyframes priceFlash {
-    0% { background: rgba(0,255,159,0.2); }
+    0% { background: rgba(60,112,203,0.25); }
     100% { background: transparent; }
   }
   @keyframes priceFlashRed {
-    0% { background: rgba(255,56,96,0.2); }
+    0% { background: rgba(224,85,119,0.2); }
     100% { background: transparent; }
   }
   .flash-up { animation: priceFlash 0.5s; }
@@ -660,7 +663,7 @@
         </div>
         <div>
           <div class="score-num blue-score" id="blueScore">0</div>
-          <div class="match-period" style="color:var(--accent)">BLUE</div>
+          <div class="match-period" style="color:var(--aemlight)">BLUE</div>
         </div>
       </div>
 
@@ -979,7 +982,7 @@ function drawMiniChart(team) {
     const y = h - ((v - min) / range) * (h - 4) - 2;
     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
   });
-  ctx.strokeStyle = isUp ? '#00ff9f' : '#ff3860';
+  ctx.strokeStyle = isUp ? '#3C70CB' : '#e05577';
   ctx.lineWidth = 1.5;
   ctx.stroke();
 }
@@ -1000,7 +1003,7 @@ function renderTradePanel() {
   const isPos = change >= 0;
   
   document.getElementById('tradePanelContent').innerHTML = `
-    <div class="team-name-display">#${t.number} ${t.name}</div>
+    <div class="team-name-display" style="font-family:'Orbitron',monospace;font-size:1rem;color:var(--aemlight);margin-bottom:16px;">#${t.number} ${t.name}</div>
     <div class="price-big">
       $${t.price.toFixed(2)}
       <span class="price-change-badge ${isPos ? 'pos' : 'neg'}" 
@@ -1014,7 +1017,7 @@ function renderTradePanel() {
     ${pos ? `<div style="background:rgba(0,212,255,0.07);border:1px solid var(--border);padding:10px;border-radius:3px;margin-bottom:10px;font-size:0.78rem;">
       <div style="color:var(--dim);margin-bottom:4px">YOUR POSITION</div>
       <div>${pos.shares} shares @ $${pos.avgCost.toFixed(2)} avg</div>
-      <div style="color:${t.price >= pos.avgCost ? 'var(--accent2)':'var(--red)'}">
+      <div style="color:${t.price >= pos.avgCost ? '#3C70CB':'var(--red)'}">
         P&L: ${t.price >= pos.avgCost ? '+' : ''}$${((t.price - pos.avgCost) * pos.shares).toFixed(2)}
       </div>
     </div>` : ''}
@@ -1122,12 +1125,12 @@ function renderPortfolio() {
       return `
         <div class="portfolio-item" onclick="selectTeam(team); renderTradePanel();" style="cursor:pointer">
           <div>
-            <div style="font-family:'Orbitron',monospace;font-size:0.75rem;color:var(--accent)">#${team.number}</div>
+            <div style="font-family:'Orbitron',monospace;font-size:0.75rem;color:var(--aemlight)">#${team.number}</div>
             <div style="font-size:0.7rem;color:var(--dim)">${pos.shares} shares</div>
           </div>
           <div style="text-align:right">
             <div style="font-size:0.8rem">$${currentVal.toFixed(2)}</div>
-            <div style="font-size:0.7rem;color:${pnl >= 0 ? 'var(--accent2)' : 'var(--red)'}">
+            <div style="font-size:0.7rem;color:${pnl >= 0 ? '#3C70CB' : 'var(--red)'}">
               ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct}%)
             </div>
           </div>
@@ -1151,7 +1154,7 @@ function renderPortfolio() {
   const totalPnl = holdingsVal - costBasis;
   document.getElementById('holdingsValue').textContent = `$${holdingsVal.toFixed(2)}`;
   document.getElementById('totalPnl').textContent = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`;
-  document.getElementById('totalPnl').style.color = totalPnl >= 0 ? 'var(--accent2)' : 'var(--red)';
+  document.getElementById('totalPnl').style.color = totalPnl >= 0 ? '#3C70CB' : 'var(--red)';
 }
 
 function renderTradeHistory() {
@@ -1445,8 +1448,8 @@ function drawMatchChart() {
     chartCtx.restore();
   };
 
-  drawLine(redHistory, '#ff3860');
-  drawLine(blueHistory, '#00d4ff');
+  drawLine(redHistory, '#e05577');
+  drawLine(blueHistory, '#3C70CB');
 }
 
 // ============================================================
