@@ -905,19 +905,15 @@
         <div class="mode-label">HISTORICAL DATA</div>
         <div class="mode-desc">Pull real past FRC event data from The Blue Alliance.</div>
         <div class="hist-inputs">
-          <div class="input-group">
-            <label>TBA API KEY</label>
-            <input type="password" id="histApiKey" placeholder="Your TBA API key...">
-          </div>
-          <div class="input-group" style="margin-top:8px;">
-            <label>EVENT KEY</label>
-            <input type="text" id="histEventKey" placeholder="e.g. 2024casd">
-          </div>
           <div class="hist-presets">
             <span style="font-size:0.65rem;color:var(--dim);letter-spacing:1px;">QUICK PICK:</span>
-            <button class="btn preset-btn" onclick="setPreset('2025orore')">PNW District Clackamas </button>
-            <button class="btn preset-btn" onclick="setPreset('2025orwil')">PNW District Wilsonville</button>
-            <button class="btn preset-btn" onclick="setPreset('2025pncmp')">Pacific Northwest FIRST District Championship</button>
+            <button class="btn preset-btn" onclick="setPreset('2025orore')">PNW Clackamas</button>
+            <button class="btn preset-btn" onclick="setPreset('2025orwil')">PNW Wilsonville</button>
+            <button class="btn preset-btn" onclick="setPreset('2025pncmp')">PNW Championship</button>
+          </div>
+          <div class="input-group" style="margin-top:10px;">
+            <label>OR TYPE AN EVENT KEY</label>
+            <input type="text" id="histEventKey" placeholder="e.g. 2025orore">
           </div>
         </div>
         <button class="btn mode-btn" onclick="loadHistorical()" id="histLoadBtn">📼 LOAD HISTORICAL</button>
@@ -1213,8 +1209,7 @@ async function loadHistorical() {
   const apiKey = '9QKYSls93qmL0Kj4OVTxLEQVVlUZJTmQVyBdnwedKDu74Fo38VwZLOyd8bQnXdRj';
   const eventKey = document.getElementById('histEventKey').value.trim();
 
-  if (!apiKey) { showNotification('Please enter your TBA API key.', 'error'); return; }
-  if (!eventKey) { showNotification('Please enter an event key (e.g. 2024casd).', 'error'); return; }
+  if (!eventKey) { showNotification('Please select an event or type an event key.', 'error'); return; }
 
   const btn = document.getElementById('histLoadBtn');
   const msg = document.getElementById('loadingMsg');
