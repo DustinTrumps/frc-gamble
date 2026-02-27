@@ -1325,6 +1325,11 @@ function initMarket() {
   // Start passive price movements
   setInterval(passivePriceMovement, 3000);
   setInterval(updateTicker, 2000);
+
+  // Mobile: show market section after load
+  if (window.innerWidth <= 640) {
+    setTimeout(() => mobileNav('market'), 100);
+  }
 }
 
 function initChart() {
@@ -1413,6 +1418,10 @@ function selectTeam(team) {
   const row = document.getElementById(`team-row-${team.key}`);
   if (row) row.classList.add('selected');
   renderTradePanel();
+  // Mobile: auto-jump to trade tab
+  if (window.innerWidth <= 640) {
+    mobileNav('trade');
+  }
 }
 
 function renderTradePanel() {
@@ -2079,24 +2088,6 @@ window.addEventListener('resize', () => {
     mobileNav(currentMobileSection);
   }
 });
-
-// Override initMarket to apply mobile layout after load
-const _origInitMarket = initMarket;
-function initMarket() {
-  _origInitMarket();
-  if (window.innerWidth <= 640) {
-    setTimeout(() => mobileNav('market'), 100);
-  }
-}
-
-// When a team is selected on mobile, auto-jump to trade tab
-const _origSelectTeam = selectTeam;
-function selectTeam(team) {
-  _origSelectTeam(team);
-  if (window.innerWidth <= 640) {
-    mobileNav('trade');
-  }
-}
 
 </script>
 </body>
