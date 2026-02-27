@@ -1,0 +1,1550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FRC Stock Exchange</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #020b14;
+    --bg2: #041220;
+    --panel: #071a2e;
+    --border: #0d3a5e;
+    --accent: #00d4ff;
+    --accent2: #00ff9f;
+    --red: #ff3860;
+    --gold: #ffd700;
+    --text: #c8e6f5;
+    --dim: #4a7a99;
+    --glow: 0 0 20px rgba(0,212,255,0.4);
+    --glow2: 0 0 20px rgba(0,255,159,0.4);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      radial-gradient(ellipse at 20% 50%, rgba(0,212,255,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(0,255,159,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Scanline effect */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.1) 2px, rgba(0,0,0,0.1) 4px);
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 20px 40px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(7,26,46,0.8);
+    backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.5rem;
+    font-weight: 900;
+    color: var(--accent);
+    text-shadow: var(--glow);
+    letter-spacing: 2px;
+  }
+  .logo span { color: var(--accent2); }
+
+  .ticker-bar {
+    display: flex;
+    gap: 20px;
+    font-size: 0.75rem;
+    color: var(--dim);
+  }
+  .ticker-item { display: flex; gap: 6px; }
+  .ticker-up { color: var(--accent2); }
+  .ticker-down { color: var(--red); }
+
+  .wallet-display {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.1rem;
+    color: var(--gold);
+    text-shadow: 0 0 15px rgba(255,215,0,0.5);
+  }
+
+  /* Setup Panel */
+  .setup-panel {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 0 20px;
+  }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .input-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 12px;
+    align-items: end;
+  }
+
+  .input-group { display: flex; flex-direction: column; gap: 6px; }
+  .input-group label { font-size: 0.7rem; color: var(--dim); letter-spacing: 1px; }
+
+  input, select {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.9rem;
+    padding: 10px 14px;
+    border-radius: 3px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    width: 100%;
+  }
+  input:focus, select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 10px rgba(0,212,255,0.2);
+  }
+
+  .btn {
+    background: transparent;
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    font-family: 'Orbitron', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 2px;
+    padding: 11px 20px;
+    cursor: pointer;
+    border-radius: 3px;
+    transition: all 0.2s;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .btn:hover {
+    background: var(--accent);
+    color: var(--bg);
+    box-shadow: var(--glow);
+  }
+  .btn.green { border-color: var(--accent2); color: var(--accent2); }
+  .btn.green:hover { background: var(--accent2); color: var(--bg); box-shadow: var(--glow2); }
+  .btn.red { border-color: var(--red); color: var(--red); }
+  .btn.red:hover { background: var(--red); color: white; box-shadow: 0 0 20px rgba(255,56,96,0.4); }
+  .btn.gold { border-color: var(--gold); color: var(--gold); }
+  .btn.gold:hover { background: var(--gold); color: var(--bg); }
+  .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  /* Main layout */
+  .main-grid {
+    position: relative;
+    z-index: 10;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0 20px 40px;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 20px;
+  }
+
+  /* Teams market */
+  .teams-header {
+    display: grid;
+    grid-template-columns: 60px 1fr 100px 100px 100px 160px;
+    gap: 10px;
+    padding: 8px 16px;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--dim);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .team-row {
+    display: grid;
+    grid-template-columns: 60px 1fr 100px 100px 100px 160px;
+    gap: 10px;
+    padding: 12px 16px;
+    border: 1px solid transparent;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-bottom: 4px;
+    align-items: center;
+  }
+
+  .team-row:hover, .team-row.selected {
+    border-color: var(--accent);
+    background: rgba(0,212,255,0.05);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  .team-number {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .team-name { font-size: 0.85rem; }
+  .team-price {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.9rem;
+    color: var(--gold);
+    text-align: right;
+  }
+
+  .team-change {
+    font-size: 0.8rem;
+    text-align: right;
+  }
+  .pos { color: var(--accent2); }
+  .neg { color: var(--red); }
+
+  .mini-chart {
+    height: 30px;
+    position: relative;
+  }
+
+  .mini-chart canvas { width: 100% !important; height: 30px !important; }
+
+  /* Confidence bar */
+  .confidence {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.7rem;
+    color: var(--dim);
+  }
+  .conf-bar {
+    flex: 1;
+    height: 4px;
+    background: var(--bg);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .conf-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    transition: width 0.5s;
+  }
+
+  /* Sidebar */
+  .sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+  /* Portfolio */
+  .portfolio-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .portfolio-item:last-child { border-bottom: none; }
+
+  /* Trade panel */
+  .trade-panel .team-name-display {
+    font-family: 'Orbitron', monospace;
+    font-size: 1rem;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .price-big {
+    font-family: 'Orbitron', monospace;
+    font-size: 2rem;
+    color: var(--gold);
+    text-shadow: 0 0 20px rgba(255,215,0,0.4);
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
+
+  .price-change-badge {
+    font-size: 0.8rem;
+    padding: 2px 8px;
+    border-radius: 2px;
+  }
+
+  .shares-input-row {
+    display: flex;
+    gap: 10px;
+    margin: 14px 0;
+  }
+
+  .shares-input-row input { flex: 1; }
+  .quick-amounts { display: flex; gap: 6px; margin-bottom: 14px; }
+  .quick-amounts .btn { padding: 6px 10px; font-size: 0.6rem; flex: 1; }
+
+  .trade-summary {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 12px;
+    border-radius: 3px;
+    margin-bottom: 14px;
+    font-size: 0.8rem;
+  }
+  .trade-summary .row { display: flex; justify-content: space-between; padding: 3px 0; }
+  .trade-summary .total { color: var(--gold); font-family: 'Orbitron', monospace; }
+
+  /* Match simulation */
+  .match-area { }
+
+  .alliance-display {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 16px;
+    align-items: center;
+    margin: 16px 0;
+  }
+
+  .alliance-box {
+    border: 1px solid var(--border);
+    padding: 14px;
+    border-radius: 4px;
+  }
+  .alliance-box.red-a { border-color: rgba(255,56,96,0.4); background: rgba(255,56,96,0.05); }
+  .alliance-box.blue-a { border-color: rgba(0,212,255,0.4); background: rgba(0,212,255,0.05); }
+
+  .alliance-label {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    margin-bottom: 8px;
+  }
+  .red-a .alliance-label { color: var(--red); }
+  .blue-a .alliance-label { color: var(--accent); }
+
+  .alliance-team { font-size: 0.85rem; padding: 4px 0; }
+
+  .vs-display {
+    font-family: 'Orbitron', monospace;
+    font-size: 1.2rem;
+    color: var(--dim);
+    text-align: center;
+  }
+
+  /* Score display */
+  .score-display {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 20px;
+    align-items: center;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    padding: 16px;
+    border-radius: 4px;
+    margin: 14px 0;
+  }
+
+  .score-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.5rem;
+    font-weight: 900;
+    text-align: center;
+  }
+  .red-score { color: var(--red); text-shadow: 0 0 20px rgba(255,56,96,0.5); }
+  .blue-score { color: var(--accent); text-shadow: var(--glow); }
+
+  .match-period {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-align: center;
+  }
+
+  .progress-bar {
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+    margin: 8px 0;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  /* Live event feed */
+  .event-feed {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 10px;
+    height: 120px;
+    overflow-y: auto;
+    font-size: 0.72rem;
+    line-height: 1.8;
+  }
+
+  .event-feed::-webkit-scrollbar { width: 4px; }
+  .event-feed::-webkit-scrollbar-track { background: var(--bg); }
+  .event-feed::-webkit-scrollbar-thumb { background: var(--border); }
+
+  .event-line { color: var(--dim); }
+  .event-line.highlight { color: var(--accent2); }
+  .event-line.danger { color: var(--red); }
+  .event-line.gold-line { color: var(--gold); }
+
+  /* Notification */
+  .notification {
+    position: fixed;
+    top: 80px;
+    right: 20px;
+    background: var(--panel);
+    border: 1px solid var(--accent);
+    padding: 14px 20px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    z-index: 1000;
+    max-width: 300px;
+    transform: translateX(400px);
+    transition: transform 0.3s;
+    box-shadow: var(--glow);
+  }
+  .notification.show { transform: translateX(0); }
+  .notification.success { border-color: var(--accent2); box-shadow: var(--glow2); }
+  .notification.error { border-color: var(--red); box-shadow: 0 0 20px rgba(255,56,96,0.4); }
+
+  /* Leaderboard */
+  .lb-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.8rem;
+  }
+  .lb-rank { font-family: 'Orbitron', monospace; color: var(--dim); width: 24px; }
+  .lb-rank.top { color: var(--gold); }
+  .lb-name { flex: 1; }
+  .lb-val { font-family: 'Orbitron', monospace; color: var(--accent2); }
+
+  /* Chart canvas */
+  #mainChart {
+    width: 100%;
+    height: 200px;
+    display: block;
+  }
+
+  .chart-container {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 14px;
+    margin-top: 14px;
+  }
+
+  .chart-label {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-bottom: 8px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.65rem;
+    letter-spacing: 2px;
+    padding: 4px 10px;
+    border-radius: 2px;
+    font-family: 'Orbitron', monospace;
+  }
+  .status-badge.live { background: rgba(255,56,96,0.15); color: var(--red); border: 1px solid rgba(255,56,96,0.3); }
+  .status-badge.idle { background: rgba(74,122,153,0.15); color: var(--dim); border: 1px solid var(--border); }
+  .status-badge.live::before { content: '●'; animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+  .tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    padding: 10px 16px;
+    cursor: pointer;
+    color: var(--dim);
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  .empty-state {
+    text-align: center;
+    color: var(--dim);
+    font-size: 0.8rem;
+    padding: 30px;
+  }
+
+  .stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 0.8rem;
+    border-bottom: 1px solid rgba(13,58,94,0.4);
+  }
+  .stat-row .val { color: var(--text); font-family: 'Orbitron', monospace; font-size: 0.75rem; }
+
+  @keyframes priceFlash {
+    0% { background: rgba(0,255,159,0.2); }
+    100% { background: transparent; }
+  }
+  @keyframes priceFlashRed {
+    0% { background: rgba(255,56,96,0.2); }
+    100% { background: transparent; }
+  }
+  .flash-up { animation: priceFlash 0.5s; }
+  .flash-down { animation: priceFlashRed 0.5s; }
+
+  .no-data { color: var(--dim); font-size: 0.8rem; padding: 20px 0; text-align: center; }
+
+  @media (max-width: 1000px) {
+    .main-grid { grid-template-columns: 1fr; }
+    .input-row { grid-template-columns: 1fr 1fr; }
+    .input-row .btn { grid-column: span 2; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FRC<span>X</span> Exchange</div>
+  <div class="ticker-bar" id="tickerBar">
+    <span style="color:var(--dim);font-size:0.7rem;">CONNECT TO LOAD MARKET DATA</span>
+  </div>
+  <div class="wallet-display">💰 $<span id="walletDisplay">10,000.00</span></div>
+</header>
+
+<!-- Setup -->
+<div class="setup-panel">
+  <div class="panel">
+    <div class="panel-title">⚡ Market Configuration</div>
+    <div class="input-row">
+      <div class="input-group">
+        <label>THE BLUE ALLIANCE API KEY</label>
+        <input type="password" id="apiKey" placeholder="Enter your TBA API key..." value="">
+      </div>
+      <div class="input-group">
+        <label>EVENT KEY (e.g. 2024casd)</label>
+        <input type="text" id="eventKey" placeholder="2024casd" value="2025casd">
+      </div>
+      <button class="btn" onclick="connectToTBA()">CONNECT</button>
+    </div>
+    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
+      <button class="btn green" onclick="loadSimulation()">⚡ LOAD SIMULATION (No API)</button>
+      <span style="font-size:0.7rem;color:var(--dim);">— or use demo mode with fictional teams</span>
+      <span id="connectionStatus" class="status-badge idle">OFFLINE</span>
+    </div>
+  </div>
+</div>
+
+<div class="main-grid" id="mainGrid" style="display:none;">
+
+  <!-- Left: Market + Match -->
+  <div>
+    <!-- Market -->
+    <div class="panel" style="margin-bottom:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="panel-title">📈 Team Stock Market</div>
+        <div id="matchStatus" class="status-badge idle">IDLE</div>
+      </div>
+
+      <div class="teams-header">
+        <span>#</span>
+        <span>TEAM</span>
+        <span style="text-align:right">PRICE</span>
+        <span style="text-align:right">CHANGE</span>
+        <span style="text-align:right">CONFIDENCE</span>
+        <span>TREND</span>
+      </div>
+      <div id="teamsList"></div>
+    </div>
+
+    <!-- Match Simulation -->
+    <div class="panel">
+      <div class="panel-title">⚔️ Match Arena</div>
+
+      <div class="alliance-display">
+        <div class="alliance-box red-a">
+          <div class="alliance-label">🔴 RED ALLIANCE</div>
+          <div id="redTeams">
+            <div class="alliance-team" style="color:var(--dim)">— Select match —</div>
+          </div>
+        </div>
+        <div class="vs-display">VS</div>
+        <div class="alliance-box blue-a">
+          <div class="alliance-label">🔵 BLUE ALLIANCE</div>
+          <div id="blueTeams">
+            <div class="alliance-team" style="color:var(--dim)">— Select match —</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <button class="btn" onclick="pickRandomMatch()">🎲 RANDOM MATCH</button>
+        <button class="btn green" id="simBtn" onclick="startSimulation()" disabled>▶ SIMULATE MATCH</button>
+        <button class="btn red" id="stopBtn" onclick="stopSimulation()" disabled>■ STOP</button>
+        <button class="btn gold" onclick="resetSim()">↺ RESET</button>
+      </div>
+
+      <div class="score-display" id="scoreDisplay" style="display:none;">
+        <div>
+          <div class="score-num red-score" id="redScore">0</div>
+          <div class="match-period" style="color:var(--red)">RED</div>
+        </div>
+        <div>
+          <div class="match-period" id="matchPeriod">AUTO</div>
+          <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+          <div class="match-period" id="timeLeft">150s</div>
+        </div>
+        <div>
+          <div class="score-num blue-score" id="blueScore">0</div>
+          <div class="match-period" style="color:var(--accent)">BLUE</div>
+        </div>
+      </div>
+
+      <div class="chart-container">
+        <div class="chart-label">LIVE SCORE TIMELINE</div>
+        <canvas id="mainChart" height="200"></canvas>
+      </div>
+
+      <div style="margin-top:14px;">
+        <div class="panel-title" style="margin-bottom:8px;">MATCH LOG</div>
+        <div class="event-feed" id="eventFeed">
+          <div class="event-line">▶ Awaiting match simulation...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right: Sidebar -->
+  <div class="sidebar">
+
+    <!-- Trade Panel -->
+    <div class="panel">
+      <div class="panel-title">💹 Trade Desk</div>
+      <div id="tradePanelContent">
+        <div class="no-data">← Click a team to trade</div>
+      </div>
+    </div>
+
+    <!-- Portfolio -->
+    <div class="panel">
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('portfolio')">PORTFOLIO</div>
+        <div class="tab" onclick="switchTab('history')">HISTORY</div>
+        <div class="tab" onclick="switchTab('leaderboard')">RANKINGS</div>
+      </div>
+
+      <div class="tab-content active" id="tab-portfolio">
+        <div id="portfolioList">
+          <div class="empty-state">No positions yet.<br>Buy some team shares!</div>
+        </div>
+        <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border);">
+          <div class="stat-row"><span style="color:var(--dim)">CASH</span><span class="val" id="cashDisplay">$10,000.00</span></div>
+          <div class="stat-row"><span style="color:var(--dim)">HOLDINGS VALUE</span><span class="val" id="holdingsValue">$0.00</span></div>
+          <div class="stat-row"><span style="color:var(--dim)">TOTAL P&L</span><span class="val" id="totalPnl" style="color:var(--accent2)">+$0.00</span></div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-history">
+        <div id="tradeHistory">
+          <div class="empty-state">No trades yet.</div>
+        </div>
+      </div>
+
+      <div class="tab-content" id="tab-leaderboard">
+        <div class="panel-title" style="margin-bottom:10px;">TOP PERFORMING TEAMS</div>
+        <div id="leaderboardList"></div>
+      </div>
+    </div>
+
+    <!-- Market Stats -->
+    <div class="panel">
+      <div class="panel-title">📊 Market Stats</div>
+      <div id="marketStats">
+        <div class="stat-row"><span style="color:var(--dim)">TOTAL VOLUME</span><span class="val" id="totalVolume">0 shares</span></div>
+        <div class="stat-row"><span style="color:var(--dim)">MARKET CAP</span><span class="val" id="marketCap">—</span></div>
+        <div class="stat-row"><span style="color:var(--dim)">BULL/BEAR RATIO</span><span class="val" id="bullBear">—</span></div>
+        <div class="stat-row"><span style="color:var(--dim)">MATCHES PLAYED</span><span class="val" id="matchesPlayed">0</span></div>
+        <div class="stat-row"><span style="color:var(--dim)">YOUR WIN RATE</span><span class="val" id="winRate">—</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="notification" class="notification"></div>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let wallet = 10000;
+let teams = [];
+let portfolio = {}; // teamKey -> { shares, avgCost }
+let tradeHistory = [];
+let selectedTeam = null;
+let simInterval = null;
+let matchData = null;
+let currentMatch = null;
+let simTime = 0;
+let maxSimTime = 150;
+let redScoreVal = 0;
+let blueScoreVal = 0;
+let simPhase = 'auto';
+let matchesPlayed = 0;
+let totalVolume = 0;
+let betWins = 0, betTotal = 0;
+
+// Chart
+let chartCtx = null;
+let redHistory = [];
+let blueHistory = [];
+let miniChartData = {};
+
+// ============================================================
+// TEAM DATA GENERATOR
+// ============================================================
+function generateSimTeams() {
+  const names = [
+    "Iron Eagles","Cyber Wolves","Steel Falcons","Quantum Knights","Circuit Breakers",
+    "Robo Ravens","Tech Titans","Binary Bots","Spark Plugs","Voltage Vipers",
+    "Null Pointers","Data Dragons","Logic Lions","Servo Sharks","Torque Tigers"
+  ];
+  const numbers = [1234,2468,3142,5566,7890,1111,4321,9999,5050,1592,7777,3333,8888,2222,6060];
+  
+  return names.map((name, i) => {
+    const baseElo = 1200 + Math.random() * 600;
+    const price = 50 + (baseElo - 1200) / 600 * 450;
+    return {
+      key: `frc${numbers[i]}`,
+      number: numbers[i],
+      name: name,
+      price: Math.round(price * 100) / 100,
+      basePrice: Math.round(price * 100) / 100,
+      elo: baseElo,
+      priceHistory: [Math.round(price * 100) / 100],
+      change24h: (Math.random() - 0.5) * 10,
+      wins: Math.floor(Math.random() * 8),
+      losses: Math.floor(Math.random() * 4),
+      opr: 20 + Math.random() * 60,
+      confidence: 0.5 + Math.random() * 0.5,
+    };
+  });
+}
+
+// ============================================================
+// API CONNECTION
+// ============================================================
+async function connectToTBA() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const eventKey = document.getElementById('eventKey').value.trim();
+  
+  if (!apiKey || !eventKey) {
+    showNotification('Please enter API key and event key', 'error');
+    return;
+  }
+
+  showNotification('Connecting to The Blue Alliance...', '');
+
+  try {
+    const headers = { 'X-TBA-Auth-Key': apiKey };
+    const res = await fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers });
+    
+    if (!res.ok) throw new Error('API error: ' + res.status);
+    const tbaTeams = await res.json();
+
+    // Also fetch matches and rankings
+    const [matchRes, rankRes] = await Promise.all([
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers })
+    ]);
+    
+    const tbaMatches = matchRes.ok ? await matchRes.json() : [];
+    const tbaRankings = rankRes.ok ? await rankRes.json() : { rankings: [] };
+
+    // Build teams with real data
+    const rankMap = {};
+    (tbaRankings.rankings || []).forEach(r => {
+      rankMap[`frc${r.team_key.replace('frc','')}`] = r;
+    });
+
+    teams = tbaTeams.slice(0, 20).map(t => {
+      const rank = rankMap[t.key];
+      const wins = rank ? rank.record.wins : Math.floor(Math.random() * 6);
+      const losses = rank ? rank.record.losses : Math.floor(Math.random() * 4);
+      const winRate = wins + losses > 0 ? wins / (wins + losses) : 0.5;
+      const price = 50 + winRate * 400 + Math.random() * 50;
+      return {
+        key: t.key,
+        number: t.team_number,
+        name: t.nickname || `Team ${t.team_number}`,
+        price: Math.round(price * 100) / 100,
+        basePrice: Math.round(price * 100) / 100,
+        elo: 1200 + winRate * 400,
+        priceHistory: [Math.round(price * 100) / 100],
+        change24h: (Math.random() - 0.5) * 15,
+        wins, losses,
+        opr: 20 + Math.random() * 60,
+        confidence: 0.4 + winRate * 0.5,
+      };
+    });
+
+    matchData = tbaMatches.filter(m => m.comp_level === 'qm');
+
+    document.getElementById('connectionStatus').className = 'status-badge live';
+    document.getElementById('connectionStatus').textContent = 'LIVE';
+    
+    initMarket();
+    showNotification(`Connected! Loaded ${teams.length} teams & ${matchData.length} matches`, 'success');
+  } catch(e) {
+    showNotification('Connection failed: ' + e.message + '. Try simulation mode.', 'error');
+  }
+}
+
+function loadSimulation() {
+  teams = generateSimTeams();
+  matchData = generateSimMatches();
+  document.getElementById('connectionStatus').className = 'status-badge idle';
+  document.getElementById('connectionStatus').textContent = 'SIM MODE';
+  initMarket();
+  showNotification('Simulation loaded! 15 teams ready to trade.', 'success');
+}
+
+function generateSimMatches() {
+  const matches = [];
+  for (let i = 0; i < 50; i++) {
+    const shuffled = [...teams].sort(() => Math.random() - 0.5);
+    matches.push({
+      key: `sim_qm${i+1}`,
+      match_number: i+1,
+      alliances: {
+        red: { team_keys: [shuffled[0].key, shuffled[1].key, shuffled[2].key] },
+        blue: { team_keys: [shuffled[3].key, shuffled[4].key, shuffled[5].key] }
+      }
+    });
+  }
+  return matches;
+}
+
+// ============================================================
+// MARKET INIT
+// ============================================================
+function initMarket() {
+  document.getElementById('mainGrid').style.display = 'grid';
+  initChart();
+  renderTeams();
+  renderPortfolio();
+  updateLeaderboard();
+  updateMarketStats();
+  
+  // Start passive price movements
+  setInterval(passivePriceMovement, 3000);
+  setInterval(updateTicker, 2000);
+}
+
+function initChart() {
+  const canvas = document.getElementById('mainChart');
+  chartCtx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth;
+  canvas.height = 200;
+}
+
+// ============================================================
+// RENDERING
+// ============================================================
+function renderTeams() {
+  const container = document.getElementById('teamsList');
+  container.innerHTML = '';
+
+  const sorted = [...teams].sort((a, b) => b.price - a.price);
+
+  sorted.forEach(team => {
+    if (!miniChartData[team.key]) miniChartData[team.key] = [team.price];
+
+    const change = team.change24h;
+    const isPos = change >= 0;
+    const winRate = team.wins + team.losses > 0 ? (team.wins / (team.wins + team.losses) * 100).toFixed(0) : '—';
+    
+    const row = document.createElement('div');
+    row.className = 'team-row' + (selectedTeam?.key === team.key ? ' selected' : '');
+    row.id = `team-row-${team.key}`;
+    row.onclick = () => selectTeam(team);
+
+    row.innerHTML = `
+      <span class="team-number">${team.number}</span>
+      <div>
+        <div style="font-size:0.85rem">${team.name}</div>
+        <div style="font-size:0.65rem;color:var(--dim)">${team.wins}W-${team.losses}L</div>
+      </div>
+      <span class="team-price">$${team.price.toFixed(2)}</span>
+      <span class="team-change ${isPos ? 'pos' : 'neg'}">${isPos ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%</span>
+      <div class="confidence">
+        <div class="conf-bar"><div class="conf-fill" style="width:${team.confidence*100}%"></div></div>
+        <span>${(team.confidence*100).toFixed(0)}%</span>
+      </div>
+      <div class="mini-chart"><canvas id="mini-${team.key}" height="30"></canvas></div>
+    `;
+    container.appendChild(row);
+    
+    // Draw mini chart
+    setTimeout(() => drawMiniChart(team), 50);
+  });
+
+  updateLeaderboard();
+}
+
+function drawMiniChart(team) {
+  const canvas = document.getElementById(`mini-${team.key}`);
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const data = miniChartData[team.key] || [team.price];
+  const w = canvas.offsetWidth || 120;
+  const h = 30;
+  canvas.width = w;
+  canvas.height = h;
+  
+  if (data.length < 2) return;
+  
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+  const isUp = data[data.length-1] >= data[0];
+  
+  ctx.clearRect(0, 0, w, h);
+  ctx.beginPath();
+  data.forEach((v, i) => {
+    const x = (i / (data.length - 1)) * w;
+    const y = h - ((v - min) / range) * (h - 4) - 2;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = isUp ? '#00ff9f' : '#ff3860';
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+}
+
+function selectTeam(team) {
+  selectedTeam = team;
+  document.querySelectorAll('.team-row').forEach(r => r.classList.remove('selected'));
+  const row = document.getElementById(`team-row-${team.key}`);
+  if (row) row.classList.add('selected');
+  renderTradePanel();
+}
+
+function renderTradePanel() {
+  if (!selectedTeam) return;
+  const t = selectedTeam;
+  const pos = portfolio[t.key];
+  const change = t.change24h;
+  const isPos = change >= 0;
+  
+  document.getElementById('tradePanelContent').innerHTML = `
+    <div class="team-name-display">#${t.number} ${t.name}</div>
+    <div class="price-big">
+      $${t.price.toFixed(2)}
+      <span class="price-change-badge ${isPos ? 'pos' : 'neg'}" 
+            style="background:${isPos ? 'rgba(0,255,159,0.1)' : 'rgba(255,56,96,0.1)'}">
+        ${isPos ? '▲' : '▼'} ${Math.abs(change).toFixed(2)}%
+      </span>
+    </div>
+    <div style="font-size:0.7rem;color:var(--dim);margin:8px 0;">
+      OPR: ${t.opr.toFixed(1)} | ELO: ${t.elo.toFixed(0)} | Record: ${t.wins}W-${t.losses}L
+    </div>
+    ${pos ? `<div style="background:rgba(0,212,255,0.07);border:1px solid var(--border);padding:10px;border-radius:3px;margin-bottom:10px;font-size:0.78rem;">
+      <div style="color:var(--dim);margin-bottom:4px">YOUR POSITION</div>
+      <div>${pos.shares} shares @ $${pos.avgCost.toFixed(2)} avg</div>
+      <div style="color:${t.price >= pos.avgCost ? 'var(--accent2)':'var(--red)'}">
+        P&L: ${t.price >= pos.avgCost ? '+' : ''}$${((t.price - pos.avgCost) * pos.shares).toFixed(2)}
+      </div>
+    </div>` : ''}
+    <div class="shares-input-row">
+      <input type="number" id="sharesInput" placeholder="Shares" min="1" value="10" oninput="updateTradeSummary()">
+    </div>
+    <div class="quick-amounts">
+      <button class="btn" onclick="setShares(1)">1</button>
+      <button class="btn" onclick="setShares(5)">5</button>
+      <button class="btn" onclick="setShares(10)">10</button>
+      <button class="btn" onclick="setShares(50)">50</button>
+    </div>
+    <div class="trade-summary" id="tradeSummary">
+      <div class="row"><span style="color:var(--dim)">Price per share</span><span>$${t.price.toFixed(2)}</span></div>
+      <div class="row"><span style="color:var(--dim)">Shares</span><span id="sumShares">10</span></div>
+      <div class="row total"><span>TOTAL</span><span id="sumTotal">$${(t.price*10).toFixed(2)}</span></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="btn green" onclick="executeTrade('buy')">▲ BUY</button>
+      <button class="btn red" onclick="executeTrade('sell')">▼ SELL</button>
+    </div>
+  `;
+}
+
+function setShares(n) {
+  document.getElementById('sharesInput').value = n;
+  updateTradeSummary();
+}
+
+function updateTradeSummary() {
+  if (!selectedTeam) return;
+  const shares = parseInt(document.getElementById('sharesInput')?.value) || 0;
+  const total = shares * selectedTeam.price;
+  const sumShares = document.getElementById('sumShares');
+  const sumTotal = document.getElementById('sumTotal');
+  if (sumShares) sumShares.textContent = shares;
+  if (sumTotal) sumTotal.textContent = `$${total.toFixed(2)}`;
+}
+
+// ============================================================
+// TRADING
+// ============================================================
+function executeTrade(type) {
+  if (!selectedTeam) return;
+  const shares = parseInt(document.getElementById('sharesInput')?.value) || 0;
+  if (shares <= 0) { showNotification('Enter a valid share amount', 'error'); return; }
+  
+  const cost = shares * selectedTeam.price;
+  
+  if (type === 'buy') {
+    if (cost > wallet) { showNotification('Insufficient funds!', 'error'); return; }
+    wallet -= cost;
+    if (!portfolio[selectedTeam.key]) portfolio[selectedTeam.key] = { shares: 0, avgCost: 0 };
+    const pos = portfolio[selectedTeam.key];
+    pos.avgCost = (pos.avgCost * pos.shares + cost) / (pos.shares + shares);
+    pos.shares += shares;
+    totalVolume += shares;
+    showNotification(`Bought ${shares} shares of #${selectedTeam.number} for $${cost.toFixed(2)}`, 'success');
+    addTradeHistory('BUY', selectedTeam, shares, selectedTeam.price);
+  } else {
+    const pos = portfolio[selectedTeam.key];
+    if (!pos || pos.shares < shares) { showNotification('Not enough shares to sell', 'error'); return; }
+    const proceeds = shares * selectedTeam.price;
+    wallet += proceeds;
+    pos.shares -= shares;
+    if (pos.shares === 0) delete portfolio[selectedTeam.key];
+    totalVolume += shares;
+    showNotification(`Sold ${shares} shares of #${selectedTeam.number} for $${proceeds.toFixed(2)}`, 'success');
+    addTradeHistory('SELL', selectedTeam, shares, selectedTeam.price);
+  }
+  
+  updateWalletDisplay();
+  renderPortfolio();
+  renderTradePanel();
+  updateMarketStats();
+}
+
+function addTradeHistory(type, team, shares, price) {
+  tradeHistory.unshift({
+    type, team: team.number, name: team.name, shares, price,
+    time: new Date().toLocaleTimeString()
+  });
+  if (tradeHistory.length > 50) tradeHistory.pop();
+  renderTradeHistory();
+}
+
+// ============================================================
+// PORTFOLIO RENDERING
+// ============================================================
+function renderPortfolio() {
+  const container = document.getElementById('portfolioList');
+  const keys = Object.keys(portfolio);
+  
+  if (keys.length === 0) {
+    container.innerHTML = '<div class="empty-state">No positions yet.<br>Buy some team shares!</div>';
+  } else {
+    container.innerHTML = keys.map(key => {
+      const pos = portfolio[key];
+      const team = teams.find(t => t.key === key);
+      if (!team) return '';
+      const currentVal = pos.shares * team.price;
+      const costBasis = pos.shares * pos.avgCost;
+      const pnl = currentVal - costBasis;
+      const pnlPct = (pnl / costBasis * 100).toFixed(1);
+      return `
+        <div class="portfolio-item" onclick="selectTeam(team); renderTradePanel();" style="cursor:pointer">
+          <div>
+            <div style="font-family:'Orbitron',monospace;font-size:0.75rem;color:var(--accent)">#${team.number}</div>
+            <div style="font-size:0.7rem;color:var(--dim)">${pos.shares} shares</div>
+          </div>
+          <div style="text-align:right">
+            <div style="font-size:0.8rem">$${currentVal.toFixed(2)}</div>
+            <div style="font-size:0.7rem;color:${pnl >= 0 ? 'var(--accent2)' : 'var(--red)'}">
+              ${pnl >= 0 ? '+' : ''}$${pnl.toFixed(2)} (${pnlPct}%)
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+  
+  // Update summary
+  let holdingsVal = 0;
+  let costBasis = 0;
+  Object.keys(portfolio).forEach(key => {
+    const pos = portfolio[key];
+    const team = teams.find(t => t.key === key);
+    if (team) {
+      holdingsVal += pos.shares * team.price;
+      costBasis += pos.shares * pos.avgCost;
+    }
+  });
+  
+  const totalPnl = holdingsVal - costBasis;
+  document.getElementById('holdingsValue').textContent = `$${holdingsVal.toFixed(2)}`;
+  document.getElementById('totalPnl').textContent = `${totalPnl >= 0 ? '+' : ''}$${totalPnl.toFixed(2)}`;
+  document.getElementById('totalPnl').style.color = totalPnl >= 0 ? 'var(--accent2)' : 'var(--red)';
+}
+
+function renderTradeHistory() {
+  const container = document.getElementById('tradeHistory');
+  if (tradeHistory.length === 0) {
+    container.innerHTML = '<div class="empty-state">No trades yet.</div>';
+    return;
+  }
+  container.innerHTML = tradeHistory.slice(0, 20).map(t => `
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.75rem;">
+      <div>
+        <span style="color:${t.type==='BUY'?'var(--accent2)':'var(--red)'};">${t.type}</span>
+        <span style="margin-left:6px">#${t.team} ×${t.shares}</span>
+      </div>
+      <div style="text-align:right">
+        <div style="color:var(--dim)">@$${t.price.toFixed(2)}</div>
+        <div style="font-size:0.65rem;color:var(--dim)">${t.time}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// MATCH SIMULATION
+// ============================================================
+function pickRandomMatch() {
+  if (!matchData || matchData.length === 0) {
+    showNotification('No match data. Load simulation or connect to TBA.', 'error');
+    return;
+  }
+  currentMatch = matchData[Math.floor(Math.random() * matchData.length)];
+  
+  const red = currentMatch.alliances.red.team_keys;
+  const blue = currentMatch.alliances.blue.team_keys;
+  
+  document.getElementById('redTeams').innerHTML = red.map(k => {
+    const t = teams.find(t => t.key === k);
+    return `<div class="alliance-team">▸ ${t ? `#${t.number} ${t.name}` : k}</div>`;
+  }).join('');
+  
+  document.getElementById('blueTeams').innerHTML = blue.map(k => {
+    const t = teams.find(t => t.key === k);
+    return `<div class="alliance-team">▸ ${t ? `#${t.number} ${t.name}` : k}</div>`;
+  }).join('');
+  
+  document.getElementById('simBtn').disabled = false;
+  addEvent(`Match selected: QM${currentMatch.match_number || '?'} loaded`, '');
+}
+
+function startSimulation() {
+  if (!currentMatch) { pickRandomMatch(); }
+  
+  redScoreVal = 0; blueScoreVal = 0;
+  simTime = 0; simPhase = 'auto';
+  redHistory = [0]; blueHistory = [0];
+  
+  document.getElementById('scoreDisplay').style.display = 'grid';
+  document.getElementById('redScore').textContent = '0';
+  document.getElementById('blueScore').textContent = '0';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('simBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('matchStatus').className = 'status-badge live';
+  document.getElementById('matchStatus').textContent = 'LIVE';
+  
+  clearEventFeed();
+  addEvent('🚀 Match starting... AUTONOMOUS PERIOD', 'highlight');
+
+  const red = currentMatch.alliances.red.team_keys.map(k => teams.find(t => t.key === k)).filter(Boolean);
+  const blue = currentMatch.alliances.blue.team_keys.map(k => teams.find(t => t.key === k)).filter(Boolean);
+
+  // Calculate team strengths
+  const redStr = red.reduce((sum, t) => sum + (t?.opr || 30), 0);
+  const blueStr = blue.reduce((sum, t) => sum + (t?.opr || 30), 0);
+
+  simInterval = setInterval(() => {
+    simTime++;
+    const pct = (simTime / maxSimTime) * 100;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('timeLeft').textContent = `${maxSimTime - simTime}s`;
+
+    // Update phase
+    if (simTime <= 15) simPhase = 'AUTO';
+    else if (simTime <= 135) simPhase = 'TELEOP';
+    else simPhase = 'ENDGAME';
+    document.getElementById('matchPeriod').textContent = simPhase;
+
+    // Score increments based on strength + randomness
+    const redRate = (redStr / (redStr + blueStr));
+    const blueRate = 1 - redRate;
+
+    // Red scoring
+    if (Math.random() < redRate * 0.4) {
+      const pts = simPhase === 'AUTO' ? (Math.random() < 0.3 ? 5 : 2) : (Math.random() < 0.2 ? 5 : Math.random() < 0.5 ? 3 : 2);
+      redScoreVal += pts;
+      if (Math.random() < 0.1) addEvent(`🔴 Red scores ${pts}pts! Total: ${redScoreVal}`, 'danger');
+    }
+
+    // Blue scoring
+    if (Math.random() < blueRate * 0.4) {
+      const pts = simPhase === 'AUTO' ? (Math.random() < 0.3 ? 5 : 2) : (Math.random() < 0.2 ? 5 : Math.random() < 0.5 ? 3 : 2);
+      blueScoreVal += pts;
+      if (Math.random() < 0.1) addEvent(`🔵 Blue scores ${pts}pts! Total: ${blueScoreVal}`, 'highlight');
+    }
+
+    // Endgame bonus
+    if (simPhase === 'ENDGAME' && simTime % 15 === 0) {
+      if (Math.random() < 0.5) { redScoreVal += 12; addEvent('🔴 Red climbed! +12pts', 'danger'); }
+      if (Math.random() < 0.5) { blueScoreVal += 12; addEvent('🔵 Blue climbed! +12pts', 'highlight'); }
+    }
+
+    document.getElementById('redScore').textContent = redScoreVal;
+    document.getElementById('blueScore').textContent = blueScoreVal;
+
+    redHistory.push(redScoreVal);
+    blueHistory.push(blueScoreVal);
+    drawMatchChart();
+
+    // Update stock prices dynamically during match
+    if (simTime % 10 === 0) {
+      updatePricesDuringMatch(red, blue, redScoreVal, blueScoreVal, redStr, blueStr);
+    }
+
+    if (simTime >= maxSimTime) {
+      endMatch(red, blue);
+    }
+  }, 200);
+}
+
+function stopSimulation() {
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+  document.getElementById('simBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('matchStatus').className = 'status-badge idle';
+  document.getElementById('matchStatus').textContent = 'STOPPED';
+  addEvent('⏹ Simulation stopped by user', '');
+}
+
+function resetSim() {
+  stopSimulation();
+  redScoreVal = 0; blueScoreVal = 0; simTime = 0;
+  document.getElementById('scoreDisplay').style.display = 'none';
+  document.getElementById('simBtn').disabled = true;
+  document.getElementById('redTeams').innerHTML = '<div class="alliance-team" style="color:var(--dim)">— Select match —</div>';
+  document.getElementById('blueTeams').innerHTML = '<div class="alliance-team" style="color:var(--dim)">— Select match —</div>';
+  clearEventFeed();
+  addEvent('▶ Awaiting match simulation...', '');
+  currentMatch = null;
+  if (chartCtx) chartCtx.clearRect(0, 0, chartCtx.canvas.width, chartCtx.canvas.height);
+}
+
+function endMatch(red, blue) {
+  clearInterval(simInterval); simInterval = null;
+  matchesPlayed++;
+  
+  const winner = redScoreVal > blueScoreVal ? 'red' : blueScoreVal > redScoreVal ? 'blue' : 'tie';
+  
+  document.getElementById('simBtn').disabled = false;
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('matchStatus').className = 'status-badge idle';
+  document.getElementById('matchStatus').textContent = 'FINAL';
+  
+  if (winner === 'tie') {
+    addEvent(`🤝 MATCH OVER — TIE! ${redScoreVal}-${blueScoreVal}`, 'gold-line');
+  } else {
+    addEvent(`🏆 MATCH OVER — ${winner.toUpperCase()} WINS! ${redScoreVal}-${blueScoreVal}`, 'gold-line');
+  }
+  
+  // Apply major price changes post-match
+  const winTeams = winner === 'red' ? red : blue;
+  const loseTeams = winner === 'red' ? blue : red;
+  
+  winTeams.forEach(t => {
+    if (!t) return;
+    const boost = 3 + Math.random() * 8;
+    t.price = Math.max(10, t.price * (1 + boost/100));
+    t.change24h += boost;
+    t.wins++;
+    t.confidence = Math.min(1, t.confidence + 0.05);
+    miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]), t.price];
+    flashRow(t.key, 'up');
+  });
+  
+  loseTeams.forEach(t => {
+    if (!t) return;
+    const drop = 3 + Math.random() * 7;
+    t.price = Math.max(10, t.price * (1 - drop/100));
+    t.change24h -= drop;
+    t.losses++;
+    t.confidence = Math.max(0.1, t.confidence - 0.05);
+    miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]), t.price];
+    flashRow(t.key, 'down');
+  });
+  
+  // Calculate bet wins (portfolio teams that won)
+  let userWon = false;
+  winTeams.forEach(t => { if (t && portfolio[t.key]) userWon = true; });
+  betTotal++;
+  if (userWon) betWins++;
+  
+  renderTeams();
+  renderPortfolio();
+  updateMarketStats();
+  updateLeaderboard();
+  updateWalletDisplay();
+  
+  // Pick next match auto
+  setTimeout(pickRandomMatch, 2000);
+}
+
+function updatePricesDuringMatch(red, blue, rScore, bScore, rStr, bStr) {
+  const rMomentum = rScore / Math.max(1, rScore + bScore);
+  const bMomentum = 1 - rMomentum;
+  
+  red.forEach(t => {
+    if (!t) return;
+    const change = (rMomentum - 0.5) * 3 + (Math.random() - 0.5) * 1;
+    t.price = Math.max(10, t.price * (1 + change/100));
+    miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]).slice(-30), t.price];
+  });
+  
+  blue.forEach(t => {
+    if (!t) return;
+    const change = (bMomentum - 0.5) * 3 + (Math.random() - 0.5) * 1;
+    t.price = Math.max(10, t.price * (1 + change/100));
+    miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]).slice(-30), t.price];
+  });
+  
+  renderTeams();
+  if (selectedTeam) { selectedTeam = teams.find(t => t.key === selectedTeam.key) || selectedTeam; renderTradePanel(); }
+  renderPortfolio();
+  updateWalletDisplay();
+}
+
+// ============================================================
+// PASSIVE PRICE MOVEMENT
+// ============================================================
+function passivePriceMovement() {
+  if (simInterval) return; // Don't interfere during match
+  teams.forEach(team => {
+    const drift = (Math.random() - 0.5) * 2;
+    const meanReversion = (team.basePrice - team.price) * 0.02;
+    team.price = Math.max(10, team.price * (1 + (drift + meanReversion * 10) / 100));
+    team.change24h = ((team.price - team.basePrice) / team.basePrice) * 100;
+    team.priceHistory.push(team.price);
+    if (team.priceHistory.length > 100) team.priceHistory.shift();
+    miniChartData[team.key] = [...(miniChartData[team.key] || [team.price]).slice(-30), team.price];
+  });
+  renderTeams();
+  if (selectedTeam) { selectedTeam = teams.find(t => t.key === selectedTeam.key) || selectedTeam; renderTradePanel(); }
+  renderPortfolio();
+}
+
+// ============================================================
+// CHART
+// ============================================================
+function drawMatchChart() {
+  if (!chartCtx) return;
+  const canvas = chartCtx.canvas;
+  canvas.width = canvas.offsetWidth;
+  const w = canvas.width, h = canvas.height;
+  chartCtx.clearRect(0, 0, w, h);
+  
+  const allVals = [...redHistory, ...blueHistory];
+  const maxV = Math.max(...allVals, 10);
+  
+  // Grid lines
+  chartCtx.strokeStyle = 'rgba(13,58,94,0.5)';
+  chartCtx.lineWidth = 1;
+  for (let i = 1; i < 4; i++) {
+    const y = h - (i/4) * h;
+    chartCtx.beginPath();
+    chartCtx.moveTo(0, y); chartCtx.lineTo(w, y);
+    chartCtx.stroke();
+  }
+
+  const drawLine = (data, color, glow) => {
+    if (data.length < 2) return;
+    chartCtx.save();
+    chartCtx.shadowColor = color;
+    chartCtx.shadowBlur = 8;
+    chartCtx.beginPath();
+    data.forEach((v, i) => {
+      const x = (i / (maxSimTime)) * w;
+      const y = h - (v / maxV) * (h - 10) - 5;
+      i === 0 ? chartCtx.moveTo(x, y) : chartCtx.lineTo(x, y);
+    });
+    chartCtx.strokeStyle = color;
+    chartCtx.lineWidth = 2;
+    chartCtx.stroke();
+    chartCtx.restore();
+  };
+
+  drawLine(redHistory, '#ff3860');
+  drawLine(blueHistory, '#00d4ff');
+}
+
+// ============================================================
+// EVENT FEED
+// ============================================================
+function addEvent(msg, type) {
+  const feed = document.getElementById('eventFeed');
+  const line = document.createElement('div');
+  line.className = 'event-line' + (type ? ` ${type}` : '');
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+  feed.appendChild(line);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+function clearEventFeed() {
+  document.getElementById('eventFeed').innerHTML = '';
+}
+
+// ============================================================
+// TICKER + STATS
+// ============================================================
+function updateTicker() {
+  if (teams.length === 0) return;
+  const bar = document.getElementById('tickerBar');
+  const items = teams.slice(0, 6).map(t => {
+    const isUp = t.change24h >= 0;
+    return `<span class="ticker-item">
+      <span style="color:var(--dim)">#${t.number}</span>
+      <span class="${isUp ? 'ticker-up' : 'ticker-down'}">$${t.price.toFixed(2)} ${isUp?'▲':'▼'}${Math.abs(t.change24h).toFixed(1)}%</span>
+    </span>`;
+  }).join('');
+  bar.innerHTML = items;
+}
+
+function updateWalletDisplay() {
+  const val = wallet + Object.keys(portfolio).reduce((sum, key) => {
+    const pos = portfolio[key];
+    const team = teams.find(t => t.key === key);
+    return sum + (team ? pos.shares * team.price : 0);
+  }, 0);
+  document.getElementById('walletDisplay').textContent = wallet.toFixed(2);
+  document.getElementById('cashDisplay').textContent = `$${wallet.toFixed(2)}`;
+}
+
+function updateMarketStats() {
+  const total = teams.reduce((sum, t) => sum + t.price * 1000, 0);
+  const bulls = teams.filter(t => t.change24h > 0).length;
+  const bears = teams.length - bulls;
+  document.getElementById('totalVolume').textContent = totalVolume + ' shares';
+  document.getElementById('marketCap').textContent = '$' + (total/1000).toFixed(0) + 'K';
+  document.getElementById('bullBear').textContent = `${bulls}🐂 / ${bears}🐻`;
+  document.getElementById('matchesPlayed').textContent = matchesPlayed;
+  document.getElementById('winRate').textContent = betTotal > 0 ? `${(betWins/betTotal*100).toFixed(0)}%` : '—';
+}
+
+function updateLeaderboard() {
+  const sorted = [...teams].sort((a, b) => b.price - a.price);
+  document.getElementById('leaderboardList').innerHTML = sorted.slice(0, 8).map((t, i) => `
+    <div class="lb-row">
+      <span class="lb-rank ${i < 3 ? 'top' : ''}">${i < 3 ? ['🥇','🥈','🥉'][i] : i+1}</span>
+      <span class="lb-name">#${t.number} ${t.name}</span>
+      <span class="lb-val">$${t.price.toFixed(2)}</span>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const names = ['portfolio','history','leaderboard'];
+    t.className = 'tab' + (names[i] === name ? ' active' : '');
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById(`tab-${name}`).classList.add('active');
+  if (name === 'history') renderTradeHistory();
+}
+
+function flashRow(teamKey, dir) {
+  const row = document.getElementById(`team-row-${teamKey}`);
+  if (!row) return;
+  row.classList.add(dir === 'up' ? 'flash-up' : 'flash-down');
+  setTimeout(() => row.classList.remove('flash-up', 'flash-down'), 500);
+}
+
+function showNotification(msg, type) {
+  const n = document.getElementById('notification');
+  n.textContent = msg;
+  n.className = `notification show${type ? ' ' + type : ''}`;
+  setTimeout(() => n.classList.remove('show'), 3500);
+}
+
+// Keyboard shortcut: B to buy, S to sell
+document.addEventListener('keydown', e => {
+  if (e.key === 'b' || e.key === 'B') executeTrade('buy');
+  if (e.key === 's' || e.key === 'S') executeTrade('sell');
+});
+</script>
+</body>
+</html>
