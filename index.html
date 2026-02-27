@@ -891,12 +891,24 @@
     <div class="panel-title">⚡ Select Market Mode</div>
     <div class="mode-cards">
 
-      <!-- Simulation Mode -->
-      <div class="mode-card" onclick="loadSimulation()">
-        <div class="mode-icon">🤖</div>
-        <div class="mode-label">SIMULATION</div>
-        <div class="mode-desc">Fictional teams & randomly generated matches. No internet needed.</div>
-        <button class="btn green mode-btn">⚡ LAUNCH SIM</button>
+      <!-- Live Mode -->
+      <div class="mode-card" id="liveCard">
+        <div class="mode-icon">🔴</div>
+        <div class="mode-label">ACTIVE MATCHES</div>
+        <div class="mode-desc">Connect to a live ongoing FRC event and trade on real matches as they happen.</div>
+        <div class="hist-inputs">
+          <div class="hist-presets">
+            <span style="font-size:0.65rem;color:var(--dim);letter-spacing:1px;">QUICK PICK:</span>
+            <button class="btn preset-btn" onclick="setLivePreset('2025orore')">PNW Clackamas</button>
+            <button class="btn preset-btn" onclick="setLivePreset('2025orwil')">PNW Wilsonville</button>
+            <button class="btn preset-btn" onclick="setLivePreset('2025pncmp')">PNW Championship</button>
+          </div>
+          <div class="input-group" style="margin-top:10px;">
+            <label>OR TYPE AN EVENT KEY</label>
+            <input type="text" id="liveEventKey" placeholder="e.g. 2025orore">
+          </div>
+        </div>
+        <button class="btn green mode-btn" onclick="loadLive()" id="liveLoadBtn">🔴 CONNECT LIVE</button>
       </div>
 
       <!-- Historical Mode -->
@@ -1092,79 +1104,57 @@ let redHistory = [];
 let blueHistory = [];
 let miniChartData = {};
 
+
 // ============================================================
-// TEAM DATA GENERATOR
+// LIVE EVENT LOADER
 // ============================================================
-function generateSimTeams() {
-  const names = [
-    "Iron Eagles","Cyber Wolves","Steel Falcons","Quantum Knights","Circuit Breakers",
-    "Robo Ravens","Tech Titans","Binary Bots","Spark Plugs","Voltage Vipers",
-    "Null Pointers","Data Dragons","Logic Lions","Servo Sharks","Torque Tigers"
-  ];
-  const numbers = [1234,2468,3142,5566,7890,1111,4321,9999,5050,1592,7777,3333,8888,2222,6060];
-  
-  return names.map((name, i) => {
-    const baseElo = 1200 + Math.random() * 600;
-    const price = 50 + (baseElo - 1200) / 600 * 450;
-    return {
-      key: `frc${numbers[i]}`,
-      number: numbers[i],
-      name: name,
-      price: Math.round(price * 100) / 100,
-      basePrice: Math.round(price * 100) / 100,
-      elo: baseElo,
-      priceHistory: [Math.round(price * 100) / 100],
-      change24h: (Math.random() - 0.5) * 10,
-      wins: Math.floor(Math.random() * 8),
-      losses: Math.floor(Math.random() * 4),
-      opr: 20 + Math.random() * 60,
-      confidence: 0.5 + Math.random() * 0.5,
-    };
-  });
+let liveRefreshInterval = null;
+
+function setLivePreset(eventKey) {
+  document.getElementById('liveEventKey').value = eventKey;
 }
 
-// ============================================================
-// API CONNECTION
-// ============================================================
-async function connectToTBA() {
-  const apiKey = document.getElementById('apiKey').value.trim();
-  const eventKey = document.getElementById('eventKey').value.trim();
-  
-  if (!apiKey || !eventKey) {
-    showNotification('Please enter API key and event key', 'error');
-    return;
-  }
+async function loadLive() {
+  const apiKey = '9QKYSls93qmL0Kj4OVTxLEQVVlUZJTmQVyBdnwedKDu74Fo38VwZLOyd8bQnXdRj';
+  const eventKey = document.getElementById('liveEventKey').value.trim();
 
-  showNotification('Connecting to The Blue Alliance...', '');
+  if (!eventKey) { showNotification('Please select an event or type an event key.', 'error'); return; }
+
+  const btn = document.getElementById('liveLoadBtn');
+  const msg = document.getElementById('loadingMsg');
+  btn.disabled = true;
+  btn.textContent = '⏳ CONNECTING...';
+  msg.style.display = 'inline';
+  document.getElementById('connectionStatus').textContent = 'CONNECTING';
 
   try {
     const headers = { 'X-TBA-Auth-Key': apiKey };
-    const res = await fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers });
-    
-    if (!res.ok) throw new Error('API error: ' + res.status);
-    const tbaTeams = await res.json();
 
-    // Also fetch matches and rankings
-    const [matchRes, rankRes] = await Promise.all([
+    const [teamRes, matchRes, rankRes, oprRes] = await Promise.all([
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
-      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers })
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers }),
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
     ]);
-    
-    const tbaMatches = matchRes.ok ? await matchRes.json() : [];
+
+    if (!teamRes.ok) throw new Error(`API error ${teamRes.status} — check event key.`);
+
+    const tbaTeams = await teamRes.json();
+    const allMatches = matchRes.ok ? await matchRes.json() : [];
     const tbaRankings = rankRes.ok ? await rankRes.json() : { rankings: [] };
+    const oprData = oprRes.ok ? await oprRes.json() : { oprs: {} };
 
-    // Build teams with real data
     const rankMap = {};
-    (tbaRankings.rankings || []).forEach(r => {
-      rankMap[`frc${r.team_key.replace('frc','')}`] = r;
-    });
+    (tbaRankings.rankings || []).forEach(r => { rankMap[r.team_key] = r; });
+    const oprMap = oprData.oprs || {};
 
-    teams = tbaTeams.slice(0, 20).map(t => {
+    teams = tbaTeams.map(t => {
       const rank = rankMap[t.key];
-      const wins = rank ? rank.record.wins : Math.floor(Math.random() * 6);
-      const losses = rank ? rank.record.losses : Math.floor(Math.random() * 4);
+      const wins = rank ? rank.record.wins : 0;
+      const losses = rank ? (rank.record.losses || 0) : 0;
       const winRate = wins + losses > 0 ? wins / (wins + losses) : 0.5;
-      const price = 50 + winRate * 400 + Math.random() * 50;
+      const opr = oprMap[t.key] || (20 + Math.random() * 40);
+      const price = Math.max(20, 50 + winRate * 350 + Math.min(opr, 100) * 0.8 + Math.random() * 30);
       return {
         key: t.key,
         number: t.team_number,
@@ -1173,40 +1163,99 @@ async function connectToTBA() {
         basePrice: Math.round(price * 100) / 100,
         elo: 1200 + winRate * 400,
         priceHistory: [Math.round(price * 100) / 100],
-        change24h: (Math.random() - 0.5) * 15,
+        change24h: (Math.random() - 0.5) * 8,
         wins, losses,
-        opr: 20 + Math.random() * 60,
-        confidence: 0.4 + winRate * 0.5,
+        opr: Math.round(opr * 10) / 10,
+        confidence: Math.min(1, 0.4 + winRate * 0.5 + opr / 200),
       };
     });
 
-    matchData = tbaMatches.filter(m => m.comp_level === 'qm');
+    // Upcoming/unplayed qualification matches for live betting
+    const upcoming = allMatches
+      .filter(m => m.comp_level === 'qm' && (m.alliances?.red?.score == null || m.alliances.red.score < 0))
+      .sort((a, b) => a.match_number - b.match_number);
+
+    // Also keep completed ones for score replay after betting closes
+    const completed = allMatches
+      .filter(m => m.comp_level === 'qm' && m.alliances?.red?.score >= 0)
+      .sort((a, b) => a.match_number - b.match_number);
+
+    matchData = [...upcoming, ...completed];
+    window._historicalMode = false;
+    window._liveMode = true;
+    window._liveEventKey = eventKey;
+    window._liveApiKey = apiKey;
+
+    // Count upcoming vs completed
+    const upcomingCount = upcoming.length;
+    const completedCount = completed.length;
 
     document.getElementById('connectionStatus').className = 'status-badge live';
     document.getElementById('connectionStatus').textContent = 'LIVE';
-    
     initMarket();
-    showNotification(`Connected! Loaded ${teams.length} teams & ${matchData.length} matches`, 'success');
+
+    const statusMsg = upcomingCount > 0
+      ? `🔴 LIVE: ${teams.length} teams, ${upcomingCount} upcoming matches, ${completedCount} completed`
+      : `Event loaded — ${completedCount} completed matches. No upcoming matches found yet.`;
+    showNotification(statusMsg, 'success');
+
+    // Auto-refresh match list every 60 seconds to pick up new results
+    if (liveRefreshInterval) clearInterval(liveRefreshInterval);
+    liveRefreshInterval = setInterval(() => refreshLiveMatches(eventKey, apiKey), 60000);
+
   } catch(e) {
-    showNotification('Connection failed: ' + e.message + '. Try simulation mode.', 'error');
+    showNotification('Failed: ' + e.message, 'error');
+    document.getElementById('connectionStatus').textContent = 'OFFLINE';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔴 CONNECT LIVE';
+    msg.style.display = 'none';
   }
 }
 
-function loadSimulation() {
-  teams = generateSimTeams();
-  matchData = generateSimMatches();
-  document.getElementById('connectionStatus').className = 'status-badge idle';
-  document.getElementById('connectionStatus').textContent = 'SIM MODE';
-  initMarket();
-  showNotification('Simulation loaded! 15 teams ready to trade.', 'success');
-}
+async function refreshLiveMatches(eventKey, apiKey) {
+  try {
+    const headers = { 'X-TBA-Auth-Key': apiKey };
+    const [matchRes, rankRes, oprRes] = await Promise.all([
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers }),
+      fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
+    ]);
+    const allMatches = matchRes.ok ? await matchRes.json() : [];
+    const tbaRankings = rankRes.ok ? await rankRes.json() : { rankings: [] };
+    const oprData = oprRes.ok ? await oprRes.json() : { oprs: {} };
 
-function setPreset(eventKey) {
-  document.getElementById('histEventKey').value = eventKey;
+    // Update team rankings/prices from fresh data
+    const rankMap = {};
+    (tbaRankings.rankings || []).forEach(r => { rankMap[r.team_key] = r; });
+    const oprMap = oprData.oprs || {};
+    teams.forEach(t => {
+      const rank = rankMap[t.key];
+      if (rank) {
+        t.wins = rank.record.wins;
+        t.losses = rank.record.losses || 0;
+      }
+      if (oprMap[t.key]) t.opr = Math.round(oprMap[t.key] * 10) / 10;
+    });
+
+    const upcoming = allMatches
+      .filter(m => m.comp_level === 'qm' && (m.alliances?.red?.score == null || m.alliances.red.score < 0))
+      .sort((a, b) => a.match_number - b.match_number);
+    const completed = allMatches
+      .filter(m => m.comp_level === 'qm' && m.alliances?.red?.score >= 0)
+      .sort((a, b) => a.match_number - b.match_number);
+
+    matchData = [...upcoming, ...completed];
+    addEvent(`🔄 Live refresh: ${upcoming.length} upcoming, ${completed.length} done`, '');
+    renderTeams();
+    updateMarketStats();
+  } catch(e) {
+    addEvent('⚠️ Live refresh failed', 'danger');
+  }
 }
 
 async function loadHistorical() {
-  const apiKey = 'eYTgQp6xea3qFreStH3DXougcmkVPUyyjul8wBCgKsYZivOSKcW3aFF4pTxGXoQZ';
+  const apiKey = '9QKYSls93qmL0Kj4OVTxLEQVVlUZJTmQVyBdnwedKDu74Fo38VwZLOyd8bQnXdRj';
   const eventKey = document.getElementById('histEventKey').value.trim();
 
   if (!eventKey) { showNotification('Please select an event or type an event key.', 'error'); return; }
@@ -1295,21 +1344,6 @@ async function loadHistorical() {
   }
 }
 
-function generateSimMatches() {
-  const matches = [];
-  for (let i = 0; i < 50; i++) {
-    const shuffled = [...teams].sort(() => Math.random() - 0.5);
-    matches.push({
-      key: `sim_qm${i+1}`,
-      match_number: i+1,
-      alliances: {
-        red: { team_keys: [shuffled[0].key, shuffled[1].key, shuffled[2].key] },
-        blue: { team_keys: [shuffled[3].key, shuffled[4].key, shuffled[5].key] }
-      }
-    });
-  }
-  return matches;
-}
 
 // ============================================================
 // MARKET INIT
@@ -1613,7 +1647,7 @@ let historicalMatchIndex = 0;
 
 function pickRandomMatch() {
   if (!matchData || matchData.length === 0) {
-    showNotification('No match data. Load simulation or connect to TBA.', 'error');
+    showNotification('No match data. Connect to an event first.', 'error');
     return;
   }
 
@@ -1623,24 +1657,38 @@ function pickRandomMatch() {
     currentMatch = matchData[historicalMatchIndex];
     historicalMatchIndex++;
     addEvent(`📼 Historical QM${currentMatch.match_number} loaded (${historicalMatchIndex}/${matchData.length})`, '');
+  } else if (window._liveMode) {
+    // In live mode: find next unplayed match (score is null or -1)
+    const upcoming = matchData.filter(m =>
+      m.alliances?.red?.score == null || m.alliances.red.score < 0
+    ).sort((a, b) => a.match_number - b.match_number);
+
+    if (upcoming.length > 0) {
+      currentMatch = upcoming[0];
+      addEvent(`🔴 LIVE QM${currentMatch.match_number} queued — place your bets!`, 'highlight');
+    } else {
+      // No upcoming — pick a random completed one as fallback
+      currentMatch = matchData[Math.floor(Math.random() * matchData.length)];
+      addEvent(`⚠️ No upcoming matches found. Showing QM${currentMatch.match_number}`, '');
+    }
   } else {
     currentMatch = matchData[Math.floor(Math.random() * matchData.length)];
     addEvent(`Match selected: QM${currentMatch.match_number || '?'} loaded`, '');
   }
-  
+
   const red = currentMatch.alliances.red.team_keys;
   const blue = currentMatch.alliances.blue.team_keys;
-  
+
   document.getElementById('redTeams').innerHTML = red.map(k => {
     const t = teams.find(t => t.key === k);
     return `<div class="alliance-team">▸ ${t ? `#${t.number} ${t.name}` : k.replace('frc','#')}</div>`;
   }).join('');
-  
+
   document.getElementById('blueTeams').innerHTML = blue.map(k => {
     const t = teams.find(t => t.key === k);
     return `<div class="alliance-team">▸ ${t ? `#${t.number} ${t.name}` : k.replace('frc','#')}</div>`;
   }).join('');
-  
+
   document.getElementById('simBtn').disabled = false;
 }
 
@@ -1667,16 +1715,22 @@ function startSimulation() {
   const redStr = red.reduce((sum, t) => sum + (t?.opr || 30), 0);
   const blueStr = blue.reduce((sum, t) => sum + (t?.opr || 30), 0);
 
-  // For historical mode: get real final scores and work backwards to animate toward them
-  const isHistorical = window._historicalMode &&
-    currentMatch.alliances?.red?.score >= 0 &&
-    currentMatch.alliances?.blue?.score >= 0;
+  // Use real final scores if available (historical mode OR live match that's already completed)
+  const hasRealScore =
+    currentMatch.alliances?.red?.score != null &&
+    currentMatch.alliances?.blue?.score != null &&
+    currentMatch.alliances.red.score >= 0 &&
+    currentMatch.alliances.blue.score >= 0;
 
+  const isHistorical = hasRealScore;
   const realRedFinal = isHistorical ? currentMatch.alliances.red.score : null;
   const realBlueFinal = isHistorical ? currentMatch.alliances.blue.score : null;
 
-  if (isHistorical) {
-    addEvent(`📼 Replaying QM${currentMatch.match_number} — Final scores locked in: 🔴${realRedFinal} vs 🔵${realBlueFinal}`, 'gold-line');
+  if (window._liveMode && !hasRealScore) {
+    addEvent(`🔴 LIVE QM${currentMatch.match_number} — scores unknown, simulating based on team OPR`, 'highlight');
+    addEvent('🚀 Match starting... AUTONOMOUS PERIOD', 'highlight');
+  } else if (isHistorical) {
+    addEvent(`📼 Replaying QM${currentMatch.match_number} — Final: 🔴${realRedFinal} vs 🔵${realBlueFinal}`, 'gold-line');
     addEvent('🚀 Match starting... AUTONOMOUS PERIOD', 'highlight');
   } else {
     addEvent('🚀 Match starting... AUTONOMOUS PERIOD', 'highlight');
@@ -1772,7 +1826,7 @@ function stopSimulation() {
 function resetSim() {
   stopSimulation();
   redScoreVal = 0; blueScoreVal = 0; simTime = 0;
-  if (!window._historicalMode) historicalMatchIndex = 0;
+  if (window._historicalMode) historicalMatchIndex = 0;
   document.getElementById('scoreDisplay').style.display = 'none';
   document.getElementById('simBtn').disabled = true;
   document.getElementById('redTeams').innerHTML = '<div class="alliance-team" style="color:var(--dim)">— Select match —</div>';
