@@ -1109,16 +1109,21 @@ let miniChartData = {};
 // LIVE EVENT LOADER
 // ============================================================
 let liveRefreshInterval = null;
+let liveLastCompletedCount = 0;
+let liveCurrentMatchKey = null;
 
 function setLivePreset(eventKey) {
   document.getElementById('liveEventKey').value = eventKey;
 }
 
-async function loadLive() {
-  const apiKey = '9QKYSls93qmL0Kj4OVTxLEQVVlUZJTmQVyBdnwedKDu74Fo38VwZLOyd8bQnXdRj';
-  const eventKey = document.getElementById('liveEventKey').value.trim();
+function setPreset(eventKey) {
+  document.getElementById('histEventKey').value = eventKey;
+}
 
-  if (!eventKey) { showNotification('Please select an event or type an event key.', 'error'); return; }
+async function loadLive() {
+  const apiKey = 'eYTgQp6xea3qFreStH3DXougcmkVPUyyjul8wBCgKsYZivOSKcW3aFF4pTxGXoQZ';
+  const eventKey = document.getElementById('liveEventKey').value.trim();
+  if (!eventKey) { showNotification('Please select or type an event key.', 'error'); return; }
 
   const btn = document.getElementById('liveLoadBtn');
   const msg = document.getElementById('loadingMsg');
@@ -1129,7 +1134,6 @@ async function loadLive() {
 
   try {
     const headers = { 'X-TBA-Auth-Key': apiKey };
-
     const [teamRes, matchRes, rankRes, oprRes] = await Promise.all([
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
@@ -1137,7 +1141,7 @@ async function loadLive() {
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
     ]);
 
-    if (!teamRes.ok) throw new Error(`API error ${teamRes.status} — check event key.`);
+    if (!teamRes.ok) throw new Error(`TBA API error ${teamRes.status} — check event key.`);
 
     const tbaTeams = await teamRes.json();
     const allMatches = matchRes.ok ? await matchRes.json() : [];
@@ -1156,8 +1160,7 @@ async function loadLive() {
       const opr = oprMap[t.key] || (20 + Math.random() * 40);
       const price = Math.max(20, 50 + winRate * 350 + Math.min(opr, 100) * 0.8 + Math.random() * 30);
       return {
-        key: t.key,
-        number: t.team_number,
+        key: t.key, number: t.team_number,
         name: t.nickname || `Team ${t.team_number}`,
         price: Math.round(price * 100) / 100,
         basePrice: Math.round(price * 100) / 100,
@@ -1170,38 +1173,30 @@ async function loadLive() {
       };
     });
 
-    // Upcoming/unplayed qualification matches for live betting
-    const upcoming = allMatches
-      .filter(m => m.comp_level === 'qm' && (m.alliances?.red?.score == null || m.alliances.red.score < 0))
+    const qmMatches = allMatches
+      .filter(m => m.comp_level === 'qm')
       .sort((a, b) => a.match_number - b.match_number);
 
-    // Also keep completed ones for score replay after betting closes
-    const completed = allMatches
-      .filter(m => m.comp_level === 'qm' && m.alliances?.red?.score >= 0)
-      .sort((a, b) => a.match_number - b.match_number);
+    matchData = qmMatches;
+    liveLastCompletedCount = qmMatches.filter(m => m.alliances?.red?.score >= 0).length;
+    liveCurrentMatchKey = null;
 
-    matchData = [...upcoming, ...completed];
     window._historicalMode = false;
     window._liveMode = true;
     window._liveEventKey = eventKey;
     window._liveApiKey = apiKey;
 
-    // Count upcoming vs completed
-    const upcomingCount = upcoming.length;
-    const completedCount = completed.length;
+    const upcoming = qmMatches.filter(m => m.alliances?.red?.score == null || m.alliances.red.score < 0);
+    const completed = qmMatches.filter(m => m.alliances?.red?.score >= 0);
 
     document.getElementById('connectionStatus').className = 'status-badge live';
     document.getElementById('connectionStatus').textContent = 'LIVE';
     initMarket();
+    showNotification(`🔴 LIVE: ${teams.length} teams · ${upcoming.length} upcoming · ${completed.length} played`, 'success');
 
-    const statusMsg = upcomingCount > 0
-      ? `🔴 LIVE: ${teams.length} teams, ${upcomingCount} upcoming matches, ${completedCount} completed`
-      : `Event loaded — ${completedCount} completed matches. No upcoming matches found yet.`;
-    showNotification(statusMsg, 'success');
-
-    // Auto-refresh match list every 60 seconds to pick up new results
+    // Poll TBA every 30 seconds — but only act when a NEW match result appears
     if (liveRefreshInterval) clearInterval(liveRefreshInterval);
-    liveRefreshInterval = setInterval(() => refreshLiveMatches(eventKey, apiKey), 60000);
+    liveRefreshInterval = setInterval(() => pollLiveResults(eventKey, apiKey), 30000);
 
   } catch(e) {
     showNotification('Failed: ' + e.message, 'error');
@@ -1213,7 +1208,8 @@ async function loadLive() {
   }
 }
 
-async function refreshLiveMatches(eventKey, apiKey) {
+// Polls TBA every 30s. Only fires when a match that was previously unscored now has a score.
+async function pollLiveResults(eventKey, apiKey) {
   try {
     const headers = { 'X-TBA-Auth-Key': apiKey };
     const [matchRes, rankRes, oprRes] = await Promise.all([
@@ -1221,36 +1217,91 @@ async function refreshLiveMatches(eventKey, apiKey) {
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
     ]);
+
     const allMatches = matchRes.ok ? await matchRes.json() : [];
     const tbaRankings = rankRes.ok ? await rankRes.json() : { rankings: [] };
     const oprData = oprRes.ok ? await oprRes.json() : { oprs: {} };
 
-    // Update team rankings/prices from fresh data
+    const qmMatches = allMatches
+      .filter(m => m.comp_level === 'qm')
+      .sort((a, b) => a.match_number - b.match_number);
+
+    const nowCompleted = qmMatches.filter(m => m.alliances?.red?.score >= 0);
+
+    // Only act if a NEW match result has come in since last poll
+    if (nowCompleted.length <= liveLastCompletedCount) return;
+
+    // Find the newly completed matches
+    const prevKeys = new Set(
+      matchData.filter(m => m.alliances?.red?.score >= 0).map(m => m.key)
+    );
+    const newlyDone = nowCompleted.filter(m => !prevKeys.has(m.key));
+
+    // Update matchData with fresh results
+    matchData = qmMatches;
+    liveLastCompletedCount = nowCompleted.length;
+
+    // Update team rankings from fresh TBA data
     const rankMap = {};
     (tbaRankings.rankings || []).forEach(r => { rankMap[r.team_key] = r; });
     const oprMap = oprData.oprs || {};
     teams.forEach(t => {
       const rank = rankMap[t.key];
-      if (rank) {
-        t.wins = rank.record.wins;
-        t.losses = rank.record.losses || 0;
-      }
+      if (rank) { t.wins = rank.record.wins; t.losses = rank.record.losses || 0; }
       if (oprMap[t.key]) t.opr = Math.round(oprMap[t.key] * 10) / 10;
     });
 
-    const upcoming = allMatches
-      .filter(m => m.comp_level === 'qm' && (m.alliances?.red?.score == null || m.alliances.red.score < 0))
-      .sort((a, b) => a.match_number - b.match_number);
-    const completed = allMatches
-      .filter(m => m.comp_level === 'qm' && m.alliances?.red?.score >= 0)
-      .sort((a, b) => a.match_number - b.match_number);
+    // For each newly completed match, apply stock price changes
+    newlyDone.forEach(match => {
+      const redScore = match.alliances.red.score;
+      const blueScore = match.alliances.blue.score;
+      const winner = redScore > blueScore ? 'red' : blueScore > redScore ? 'blue' : 'tie';
 
-    matchData = [...upcoming, ...completed];
-    addEvent(`🔄 Live refresh: ${upcoming.length} upcoming, ${completed.length} done`, '');
+      const redTeams = match.alliances.red.team_keys.map(k => teams.find(t => t.key === k)).filter(Boolean);
+      const blueTeams = match.alliances.blue.team_keys.map(k => teams.find(t => t.key === k)).filter(Boolean);
+      const winTeams = winner === 'red' ? redTeams : blueTeams;
+      const loseTeams = winner === 'red' ? blueTeams : redTeams;
+
+      winTeams.forEach(t => {
+        const boost = 3 + Math.random() * 8;
+        t.price = Math.max(10, t.price * (1 + boost / 100));
+        t.change24h += boost;
+        t.confidence = Math.min(1, t.confidence + 0.05);
+        miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]).slice(-30), t.price];
+        flashRow(t.key, 'up');
+      });
+      loseTeams.forEach(t => {
+        const drop = 3 + Math.random() * 7;
+        t.price = Math.max(10, t.price * (1 - drop / 100));
+        t.change24h -= drop;
+        t.confidence = Math.max(0.1, t.confidence - 0.05);
+        miniChartData[t.key] = [...(miniChartData[t.key] || [t.price]).slice(-30), t.price];
+        flashRow(t.key, 'down');
+      });
+
+      const winLabel = winner === 'tie' ? 'TIE' : `${winner.toUpperCase()} WINS`;
+      addEvent(`✅ QM${match.match_number} result posted: ${winLabel} · 🔴${redScore}–🔵${blueScore}`, 'gold-line');
+      matchesPlayed++;
+    });
+
     renderTeams();
+    renderPortfolio();
     updateMarketStats();
+    updateLeaderboard();
+    updateWalletDisplay();
+
+    // Auto-queue the next unplayed match
+    const nextUpcoming = qmMatches.filter(m => m.alliances?.red?.score == null || m.alliances.red.score < 0);
+    if (nextUpcoming.length > 0) {
+      addEvent(`🔜 Next up: QM${nextUpcoming[0].match_number} — get your bets in!`, 'highlight');
+    } else {
+      addEvent('🏁 All qualification matches complete!', 'gold-line');
+      clearInterval(liveRefreshInterval);
+      document.getElementById('connectionStatus').textContent = 'EVENT DONE';
+    }
+
   } catch(e) {
-    addEvent('⚠️ Live refresh failed', 'danger');
+    addEvent('⚠️ Poll failed: ' + e.message, 'danger');
   }
 }
 
