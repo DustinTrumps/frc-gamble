@@ -562,10 +562,231 @@
 
   .no-data { color: var(--dim); font-size: 0.8rem; padding: 20px 0; text-align: center; }
 
+  /* =============================================
+     MOBILE NAV BOTTOM BAR
+  ============================================= */
+  .mobile-nav {
+    display: none;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    z-index: 200;
+    background: rgba(10,22,40,0.97);
+    border-top: 1px solid var(--border);
+    backdrop-filter: blur(16px);
+    padding: 0;
+    height: 60px;
+  }
+  .mobile-nav-inner {
+    display: flex;
+    height: 100%;
+  }
+  .mobile-nav-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    cursor: pointer;
+    font-family: 'Orbitron', monospace;
+    font-size: 0.45rem;
+    letter-spacing: 1px;
+    color: var(--dim);
+    border: none;
+    background: none;
+    transition: all 0.2s;
+    padding: 8px 4px;
+    position: relative;
+  }
+  .mobile-nav-btn.active {
+    color: var(--white);
+    background: rgba(16,84,162,0.15);
+  }
+  .mobile-nav-btn.active::after {
+    content: '';
+    position: absolute;
+    top: 0; left: 10%; right: 10%;
+    height: 2px;
+    background: var(--aemlight);
+    border-radius: 0 0 2px 2px;
+  }
+  .mobile-nav-icon { font-size: 1.1rem; line-height: 1; }
+
+  /* =============================================
+     MOBILE SECTION PAGES
+  ============================================= */
+  .mobile-section {
+    display: none;
+  }
+
+  /* =============================================
+     TABLET (≤ 1000px)
+  ============================================= */
   @media (max-width: 1000px) {
-    .main-grid { grid-template-columns: 1fr; }
+    .main-grid { grid-template-columns: 1fr; padding: 0 12px 20px; }
     .input-row { grid-template-columns: 1fr 1fr; }
     .input-row .btn { grid-column: span 2; }
+    .setup-panel { margin: 16px auto; }
+    header { padding: 14px 20px; }
+    .ticker-bar { display: none; }
+  }
+
+  /* =============================================
+     MOBILE (≤ 640px)
+  ============================================= */
+  @media (max-width: 640px) {
+    /* Header */
+    header {
+      padding: 12px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo { font-size: 1.1rem; letter-spacing: 1px; }
+    .ticker-bar { display: none; }
+    .wallet-display { font-size: 0.85rem; }
+
+    /* Setup panel */
+    .setup-panel { margin: 12px auto; padding: 0 12px; }
+    .panel { padding: 16px; }
+    .input-row {
+      grid-template-columns: 1fr;
+    }
+    .input-row .btn { grid-column: span 1; width: 100%; }
+    .panel > div[style*="margin-top:12px"] {
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .panel > div[style*="margin-top:12px"] span[style*="0.7rem"] {
+      display: none;
+    }
+
+    /* Main grid — single column, no padding bottom for nav */
+    .main-grid {
+      grid-template-columns: 1fr;
+      padding: 0 12px 80px;
+      gap: 12px;
+    }
+
+    /* Show mobile nav */
+    .mobile-nav { display: flex; }
+
+    /* Hide sidebar on mobile by default, show via JS tabs */
+    .sidebar { gap: 12px; }
+
+    /* Teams table — simplified for mobile */
+    .teams-header {
+      grid-template-columns: 54px 1fr 80px 70px;
+      font-size: 0.58rem;
+      padding: 6px 10px;
+    }
+    /* Hide confidence + trend columns on mobile */
+    .teams-header span:nth-child(5),
+    .teams-header span:nth-child(6) { display: none; }
+
+    .team-row {
+      grid-template-columns: 54px 1fr 80px 70px;
+      padding: 10px;
+      gap: 6px;
+    }
+    /* Hide confidence + mini chart on mobile */
+    .team-row > .confidence,
+    .team-row > .mini-chart { display: none; }
+
+    .team-number { font-size: 0.75rem; }
+    .team-price { font-size: 0.78rem; }
+    .team-change { font-size: 0.7rem; }
+    .team-name { font-size: 0.78rem; }
+
+    /* Alliance display — stack vertically */
+    .alliance-display {
+      grid-template-columns: 1fr;
+      gap: 8px;
+    }
+    .vs-display {
+      text-align: center;
+      font-size: 0.9rem;
+      padding: 4px 0;
+    }
+    .alliance-box { padding: 10px 12px; }
+    .alliance-team { font-size: 0.78rem; }
+
+    /* Match control buttons — 2x2 grid */
+    .match-controls {
+      display: grid !important;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Score display */
+    .score-display { padding: 12px; gap: 10px; }
+    .score-num { font-size: 2rem; }
+
+    /* Price big in trade panel */
+    .price-big { font-size: 1.5rem; flex-wrap: wrap; gap: 6px; }
+
+    /* Quick amounts */
+    .quick-amounts .btn { padding: 8px 6px; font-size: 0.58rem; letter-spacing: 1px; }
+
+    /* Panels */
+    .panel-title { font-size: 0.62rem; letter-spacing: 2px; margin-bottom: 12px; }
+
+    /* Buttons — bigger tap targets */
+    .btn { padding: 12px 16px; font-size: 0.62rem; }
+
+    /* Chart */
+    #mainChart { height: 150px; }
+
+    /* Event feed */
+    .event-feed { height: 90px; font-size: 0.68rem; }
+
+    /* Notification — full width at bottom above nav */
+    .notification {
+      top: auto;
+      bottom: 68px;
+      right: 12px;
+      left: 12px;
+      max-width: none;
+      transform: translateY(200px);
+    }
+    .notification.show { transform: translateY(0); }
+
+    /* Tabs — equal width */
+    .tabs { gap: 0; }
+    .tab { flex: 1; text-align: center; padding: 10px 4px; font-size: 0.55rem; letter-spacing: 1px; }
+
+    /* Trade summary */
+    .trade-summary { font-size: 0.75rem; }
+    .shares-input-row { margin: 10px 0; }
+
+    /* Stat rows */
+    .stat-row { font-size: 0.75rem; }
+    .stat-row .val { font-size: 0.7rem; }
+
+    /* Match controls row — make scrollable on tiny screens */
+    .match-btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    /* Touch-friendly inputs */
+    input, select {
+      font-size: 16px; /* prevents iOS zoom */
+      padding: 12px 14px;
+    }
+  }
+
+  /* =============================================
+     VERY SMALL (≤ 380px)
+  ============================================= */
+  @media (max-width: 380px) {
+    .logo { font-size: 0.95rem; }
+    .wallet-display { font-size: 0.75rem; }
+    .teams-header, .team-row {
+      grid-template-columns: 48px 1fr 72px 64px;
+    }
+    .score-num { font-size: 1.6rem; }
   }
 </style>
 </head>
@@ -579,24 +800,29 @@
   <div class="wallet-display">💰 $<span id="walletDisplay">10,000.00</span></div>
 </header>
 
+<!-- Mobile Bottom Nav -->
+<nav class="mobile-nav">
+  <div class="mobile-nav-inner">
+    <button class="mobile-nav-btn active" id="mnav-market" onclick="mobileNav('market')">
+      <span class="mobile-nav-icon">📈</span>MARKET
+    </button>
+    <button class="mobile-nav-btn" id="mnav-match" onclick="mobileNav('match')">
+      <span class="mobile-nav-icon">⚔️</span>MATCH
+    </button>
+    <button class="mobile-nav-btn" id="mnav-trade" onclick="mobileNav('trade')">
+      <span class="mobile-nav-icon">💹</span>TRADE
+    </button>
+    <button class="mobile-nav-btn" id="mnav-portfolio" onclick="mobileNav('portfolio')">
+      <span class="mobile-nav-icon">💼</span>WALLET
+    </button>
+  </div>
+</nav>
+
 <!-- Setup -->
 <div class="setup-panel">
   <div class="panel">
-    <div class="panel-title">⚡ Market Configuration</div>
-    <div class="input-row">
-      <div class="input-group">
-        <label>THE BLUE ALLIANCE API KEY</label>
-        <input type="password" id="apiKey" placeholder="Enter your TBA API key..." value="">
-      </div>
-      <div class="input-group">
-        <label>EVENT KEY (e.g. 2024casd)</label>
-        <input type="text" id="eventKey" placeholder="2024casd" value="2025casd">
-      </div>
-      <button class="btn" onclick="connectToTBA()">CONNECT</button>
-    </div>
-    <div style="margin-top:12px;display:flex;gap:10px;align-items:center;">
-      <button class="btn green" onclick="loadSimulation()">⚡ LOAD SIMULATION (No API)</button>
-      <span style="font-size:0.7rem;color:var(--dim);">— or use demo mode with fictional teams</span>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <button class="btn green" onclick="loadSimulation()">⚡ LAUNCH SIMULATION</button>
       <span id="connectionStatus" class="status-badge idle">OFFLINE</span>
     </div>
   </div>
@@ -605,9 +831,9 @@
 <div class="main-grid" id="mainGrid" style="display:none;">
 
   <!-- Left: Market + Match -->
-  <div>
+  <div id="section-left">
     <!-- Market -->
-    <div class="panel" style="margin-bottom:20px;">
+    <div class="panel" id="section-market" style="margin-bottom:20px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <div class="panel-title">📈 Team Stock Market</div>
         <div id="matchStatus" class="status-badge idle">IDLE</div>
@@ -625,7 +851,7 @@
     </div>
 
     <!-- Match Simulation -->
-    <div class="panel">
+    <div class="panel" id="section-match">
       <div class="panel-title">⚔️ Match Arena</div>
 
       <div class="alliance-display">
@@ -644,7 +870,7 @@
         </div>
       </div>
 
-      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;" class="match-btn-row">
         <button class="btn" onclick="pickRandomMatch()">🎲 RANDOM MATCH</button>
         <button class="btn green" id="simBtn" onclick="startSimulation()" disabled>▶ SIMULATE MATCH</button>
         <button class="btn red" id="stopBtn" onclick="stopSimulation()" disabled>■ STOP</button>
@@ -682,10 +908,10 @@
   </div>
 
   <!-- Right: Sidebar -->
-  <div class="sidebar">
+  <div class="sidebar" id="section-sidebar">
 
     <!-- Trade Panel -->
-    <div class="panel">
+    <div class="panel" id="section-trade">
       <div class="panel-title">💹 Trade Desk</div>
       <div id="tradePanelContent">
         <div class="no-data">← Click a team to trade</div>
@@ -1548,6 +1774,88 @@ document.addEventListener('keydown', e => {
   if (e.key === 'b' || e.key === 'B') executeTrade('buy');
   if (e.key === 's' || e.key === 'S') executeTrade('sell');
 });
+
+let currentMobileSection = 'market';
+
+function mobileNav(section) {
+  if (window.innerWidth > 640) return;
+  currentMobileSection = section;
+
+  // Update nav button states
+  document.querySelectorAll('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById(`mnav-${section}`);
+  if (btn) btn.classList.add('active');
+
+  // Show/hide sections
+  const market = document.getElementById('section-market');
+  const match = document.getElementById('section-match');
+  const trade = document.getElementById('section-trade');
+  const sidebar = document.getElementById('section-sidebar');
+
+  // Reset visibility
+  [market, match, trade, sidebar].forEach(el => { if(el) el.style.display = 'none'; });
+
+  if (section === 'market') {
+    if (market) market.style.display = 'block';
+  } else if (section === 'match') {
+    if (match) match.style.display = 'block';
+  } else if (section === 'trade') {
+    if (trade) { trade.style.display = 'block'; }
+    // Also show market briefly if no team selected
+    if (!selectedTeam && market) market.style.display = 'block';
+  } else if (section === 'portfolio') {
+    // Show portfolio + market stats panels (children 2 and 3 of sidebar)
+    if (sidebar) {
+      const children = sidebar.children;
+      for (let i = 0; i < children.length; i++) {
+        children[i].style.display = i === 0 ? 'none' : 'block'; // hide trade, show rest
+      }
+      sidebar.style.display = 'flex';
+    }
+  }
+}
+
+function resetMobileLayout() {
+  if (window.innerWidth > 640) {
+    // Desktop: show everything
+    const els = ['section-market','section-match','section-trade','section-sidebar'];
+    els.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = '';
+    });
+    const sidebar = document.getElementById('section-sidebar');
+    if (sidebar) {
+      Array.from(sidebar.children).forEach(c => c.style.display = '');
+    }
+  }
+}
+
+window.addEventListener('resize', () => {
+  if (window.innerWidth > 640) {
+    resetMobileLayout();
+  } else {
+    mobileNav(currentMobileSection);
+  }
+});
+
+// Override initMarket to apply mobile layout after load
+const _origInitMarket = initMarket;
+function initMarket() {
+  _origInitMarket();
+  if (window.innerWidth <= 640) {
+    setTimeout(() => mobileNav('market'), 100);
+  }
+}
+
+// When a team is selected on mobile, auto-jump to trade tab
+const _origSelectTeam = selectTeam;
+function selectTeam(team) {
+  _origSelectTeam(team);
+  if (window.innerWidth <= 640) {
+    mobileNav('trade');
+  }
+}
+
 </script>
 </body>
 </html>
