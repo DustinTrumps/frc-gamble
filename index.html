@@ -1134,6 +1134,47 @@ async function loadLive() {
 
   try {
     const headers = { 'X-TBA-Auth-Key': apiKey };
+
+    // ── Step 1: Fetch event info and verify it is actually live today ──
+    const eventInfoRes = await fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/simple`, { headers });
+    if (!eventInfoRes.ok) throw new Error(`TBA API error ${eventInfoRes.status} — check event key.`);
+    const eventInfo = await eventInfoRes.json();
+
+    const today = new Date();
+    // Zero out time so we compare dates only
+    today.setHours(0, 0, 0, 0);
+
+    const startDate = new Date(eventInfo.start_date + 'T00:00:00');
+    const endDate   = new Date(eventInfo.end_date   + 'T23:59:59');
+
+    const isLiveNow = today >= startDate && today <= endDate;
+
+    if (!isLiveNow) {
+      const fmt = d => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const todayStr = fmt(today);
+      const startStr = fmt(startDate);
+      const endStr   = fmt(endDate);
+
+      if (today < startDate) {
+        throw new Error(
+          `"${eventInfo.name}" hasn't started yet.\n` +
+          `Starts ${startStr} · Today is ${todayStr}.\n` +
+          `Use Historical Data instead.`
+        );
+      } else {
+        throw new Error(
+          `"${eventInfo.name}" already ended.\n` +
+          `Ran ${startStr} – ${endStr} · Today is ${todayStr}.\n` +
+          `Use Historical Data instead.`
+        );
+      }
+    }
+
+    // Event is live — log it
+    const eventName = eventInfo.name;
+    addEvent ? null : null; // addEvent may not exist yet, will log after init
+
+    // ── Step 2: Load all event data ──
     const [teamRes, matchRes, rankRes, oprRes] = await Promise.all([
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
@@ -1192,14 +1233,22 @@ async function loadLive() {
     document.getElementById('connectionStatus').className = 'status-badge live';
     document.getElementById('connectionStatus').textContent = 'LIVE';
     initMarket();
-    showNotification(`🔴 LIVE: ${teams.length} teams · ${upcoming.length} upcoming · ${completed.length} played`, 'success');
 
-    // Poll TBA every 30 seconds — but only act when a NEW match result appears
+    // Log confirmation now that addEvent is available
+    addEvent(`✅ Confirmed LIVE: ${eventName}`, 'highlight');
+    addEvent(`📅 Event runs ${eventInfo.start_date} → ${eventInfo.end_date} · Polling every 30s`, '');
+    if (upcoming.length > 0) {
+      addEvent(`🔜 Next up: QM${upcoming[0].match_number} — place your bets!`, 'highlight');
+    }
+
+    showNotification(`🔴 LIVE: ${eventName} · ${upcoming.length} upcoming · ${completed.length} played`, 'success');
+
+    // Poll TBA every 30 seconds — only acts when a NEW match result appears
     if (liveRefreshInterval) clearInterval(liveRefreshInterval);
     liveRefreshInterval = setInterval(() => pollLiveResults(eventKey, apiKey), 30000);
 
   } catch(e) {
-    showNotification('Failed: ' + e.message, 'error');
+    showNotification(e.message, 'error');
     document.getElementById('connectionStatus').textContent = 'OFFLINE';
   } finally {
     btn.disabled = false;
