@@ -1120,6 +1120,65 @@ function setPreset(eventKey) {
   document.getElementById('histEventKey').value = eventKey;
 }
 
+// ============================================================
+// STATBOTICS EPA HELPER
+// ============================================================
+// Fetches per-team EPA for an event from Statbotics REST API.
+// Returns a Map: teamNumber (int) -> { epa, epa_pre_event, norm_epa, rank }
+// Falls back gracefully to empty map if the request fails or event not yet indexed.
+async function fetchStatboticsEPA(eventKey) {
+  try {
+    // Statbotics REST API — no auth key required, public endpoint
+    const url = `https://api.statbotics.io/v3/team_events?event=${eventKey}&limit=200&fields=team,epa,epa_pre_event,norm_epa,rank`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`Statbotics returned ${res.status} for ${eventKey} — skipping EPA`);
+      return new Map();
+    }
+    const data = await res.json();
+    const map = new Map();
+    (Array.isArray(data) ? data : []).forEach(entry => {
+      // entry.team is the team number (int)
+      map.set(entry.team, {
+        epa:           entry.epa?.total_points?.mean  ?? entry.epa ?? null,
+        epa_pre_event: entry.epa_pre_event?.total_points?.mean ?? null,
+        norm_epa:      entry.norm_epa ?? null,
+        rank:          entry.rank ?? null,
+      });
+    });
+    return map;
+  } catch(e) {
+    console.warn('Statbotics fetch failed:', e.message);
+    return new Map();
+  }
+}
+
+// Convert EPA + TBA data into a stock price.
+// Uses norm_epa (0–2000 scale) as primary driver, falls back to OPR-based estimate.
+// Price range: $20 (weak rookie) → $500 (elite team like 254)
+function calcStartingPrice(teamNumber, epaMap, opr, winRate) {
+  const epaData = epaMap.get(teamNumber);
+
+  if (epaData && epaData.norm_epa != null) {
+    // norm_epa: ~1500 is average, ~1900+ is elite, <1300 is below average
+    const norm = epaData.norm_epa; // typically 1000–2100
+    const normalized = Math.max(0, Math.min(1, (norm - 1100) / 900)); // 0 to 1 scale
+    const price = 20 + normalized * 480 + (Math.random() - 0.5) * 15;
+    return Math.round(Math.max(20, price) * 100) / 100;
+  }
+
+  if (epaData && epaData.epa != null) {
+    // raw EPA in point units — typical range 0–90
+    const normalized = Math.max(0, Math.min(1, epaData.epa / 80));
+    const price = 20 + normalized * 430 + winRate * 50 + (Math.random() - 0.5) * 15;
+    return Math.round(Math.max(20, price) * 100) / 100;
+  }
+
+  // Fallback: OPR + win rate (TBA only)
+  const price = Math.max(20, 50 + winRate * 350 + Math.min(opr, 100) * 0.8 + Math.random() * 30);
+  return Math.round(price * 100) / 100;
+}
+
 async function loadLive() {
   const apiKey = 'eYTgQp6xea3qFreStH3DXougcmkVPUyyjul8wBCgKsYZivOSKcW3aFF4pTxGXoQZ';
   const eventKey = document.getElementById('liveEventKey').value.trim();
@@ -1172,14 +1231,14 @@ async function loadLive() {
 
     // Event is live — log it
     const eventName = eventInfo.name;
-    addEvent ? null : null; // addEvent may not exist yet, will log after init
 
-    // ── Step 2: Load all event data ──
-    const [teamRes, matchRes, rankRes, oprRes] = await Promise.all([
+    // ── Step 2: Load TBA data + Statbotics EPA in parallel ──
+    const [teamRes, matchRes, rankRes, oprRes, epaMap] = await Promise.all([
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
+      fetchStatboticsEPA(eventKey),
     ]);
 
     if (!teamRes.ok) throw new Error(`TBA API error ${teamRes.status} — check event key.`);
@@ -1192,6 +1251,7 @@ async function loadLive() {
     const rankMap = {};
     (tbaRankings.rankings || []).forEach(r => { rankMap[r.team_key] = r; });
     const oprMap = oprData.oprs || {};
+    const usingStatbotics = epaMap.size > 0;
 
     teams = tbaTeams.map(t => {
       const rank = rankMap[t.key];
@@ -1199,17 +1259,20 @@ async function loadLive() {
       const losses = rank ? (rank.record.losses || 0) : 0;
       const winRate = wins + losses > 0 ? wins / (wins + losses) : 0.5;
       const opr = oprMap[t.key] || (20 + Math.random() * 40);
-      const price = Math.max(20, 50 + winRate * 350 + Math.min(opr, 100) * 0.8 + Math.random() * 30);
+      const epaData = epaMap.get(t.team_number);
+      const price = calcStartingPrice(t.team_number, epaMap, opr, winRate);
       return {
         key: t.key, number: t.team_number,
         name: t.nickname || `Team ${t.team_number}`,
-        price: Math.round(price * 100) / 100,
-        basePrice: Math.round(price * 100) / 100,
+        price, basePrice: price,
         elo: 1200 + winRate * 400,
-        priceHistory: [Math.round(price * 100) / 100],
+        priceHistory: [price],
         change24h: (Math.random() - 0.5) * 8,
         wins, losses,
         opr: Math.round(opr * 10) / 10,
+        epa: epaData?.epa ?? null,
+        normEpa: epaData?.norm_epa ?? null,
+        sbRank: epaData?.rank ?? null,
         confidence: Math.min(1, 0.4 + winRate * 0.5 + opr / 200),
       };
     });
@@ -1236,6 +1299,7 @@ async function loadLive() {
 
     // Log confirmation now that addEvent is available
     addEvent(`✅ Confirmed LIVE: ${eventName}`, 'highlight');
+    addEvent(`📊 Prices from: ${usingStatbotics ? `Statbotics EPA (${epaMap.size} teams)` : 'TBA OPR fallback (Statbotics unavailable)'}`, usingStatbotics ? 'highlight' : '');
     addEvent(`📅 Event runs ${eventInfo.start_date} → ${eventInfo.end_date} · Polling every 30s`, '');
     if (upcoming.length > 0) {
       addEvent(`🔜 Next up: QM${upcoming[0].match_number} — place your bets!`, 'highlight');
@@ -1370,11 +1434,12 @@ async function loadHistorical() {
   try {
     const headers = { 'X-TBA-Auth-Key': apiKey };
 
-    const [teamRes, matchRes, rankRes, oprRes] = await Promise.all([
+    const [teamRes, matchRes, rankRes, oprRes, epaMap] = await Promise.all([
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/teams`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/matches`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/rankings`, { headers }),
       fetch(`https://www.thebluealliance.com/api/v3/event/${eventKey}/oprs`, { headers }),
+      fetchStatboticsEPA(eventKey),
     ]);
 
     if (!teamRes.ok) throw new Error(`API error ${teamRes.status} — check your API key and event key.`);
@@ -1383,31 +1448,35 @@ async function loadHistorical() {
     const allMatches = matchRes.ok ? await matchRes.json() : [];
     const tbaRankings = rankRes.ok ? await rankRes.json() : { rankings: [] };
     const oprData = oprRes.ok ? await oprRes.json() : { oprs: {} };
+    const usingStatbotics = epaMap.size > 0;
 
     // Build rank + OPR maps
     const rankMap = {};
     (tbaRankings.rankings || []).forEach(r => { rankMap[r.team_key] = r; });
     const oprMap = oprData.oprs || {};
 
-    // Build teams from real data
+    // Build teams using Statbotics EPA for prices where available
     teams = tbaTeams.map(t => {
       const rank = rankMap[t.key];
       const wins = rank ? rank.record.wins : 0;
       const losses = rank ? (rank.record.losses || 0) : 0;
       const winRate = wins + losses > 0 ? wins / (wins + losses) : 0.5;
       const opr = oprMap[t.key] || (20 + Math.random() * 40);
-      const price = Math.max(20, 50 + winRate * 350 + Math.min(opr, 100) * 0.8 + Math.random() * 30);
+      const epaData = epaMap.get(t.team_number);
+      const price = calcStartingPrice(t.team_number, epaMap, opr, winRate);
       return {
         key: t.key,
         number: t.team_number,
         name: t.nickname || `Team ${t.team_number}`,
-        price: Math.round(price * 100) / 100,
-        basePrice: Math.round(price * 100) / 100,
+        price, basePrice: price,
         elo: 1200 + winRate * 400,
-        priceHistory: [Math.round(price * 100) / 100],
+        priceHistory: [price],
         change24h: (Math.random() - 0.5) * 8,
         wins, losses,
         opr: Math.round(opr * 10) / 10,
+        epa: epaData?.epa ?? null,
+        normEpa: epaData?.norm_epa ?? null,
+        sbRank: epaData?.rank ?? null,
         confidence: Math.min(1, 0.4 + winRate * 0.5 + opr / 200),
       };
     });
@@ -1432,7 +1501,7 @@ async function loadHistorical() {
     document.getElementById('connectionStatus').className = 'status-badge live';
     document.getElementById('connectionStatus').textContent = 'HISTORICAL';
     initMarket();
-    showNotification(`Loaded ${teams.length} teams & ${qmMatches.length} real matches from ${eventKey.toUpperCase()}!`, 'success');
+    showNotification(`Loaded ${teams.length} teams & ${qmMatches.length} matches · ${usingStatbotics ? `Statbotics EPA ✓` : 'TBA OPR fallback'}`, 'success');
 
   } catch(e) {
     showNotification('Failed: ' + e.message, 'error');
@@ -1575,7 +1644,7 @@ function renderTradePanel() {
       </span>
     </div>
     <div style="font-size:0.7rem;color:var(--dim);margin:8px 0;">
-      OPR: ${t.opr.toFixed(1)} | ELO: ${t.elo.toFixed(0)} | Record: ${t.wins}W-${t.losses}L
+      ${t.normEpa != null ? `<span style="color:var(--gold)">EPA: ${t.normEpa.toFixed(0)}</span> · ` : ''}OPR: ${t.opr.toFixed(1)} | ELO: ${t.elo.toFixed(0)} | Record: ${t.wins}W-${t.losses}L${t.sbRank != null ? ` | SB Rank: #${t.sbRank}` : ''}
     </div>
     ${pos ? `<div style="background:rgba(0,212,255,0.07);border:1px solid var(--border);padding:10px;border-radius:3px;margin-bottom:10px;font-size:0.78rem;">
       <div style="color:var(--dim);margin-bottom:4px">YOUR POSITION</div>
