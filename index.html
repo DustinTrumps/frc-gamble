@@ -2093,7 +2093,8 @@ function updatePricesDuringMatch(red, blue, rScore, bScore, rStr, bStr) {
 // PASSIVE PRICE MOVEMENT
 // ============================================================
 function passivePriceMovement() {
-  if (simInterval) return; // Don't interfere during match
+  if (simInterval) return;       // Don't interfere during match simulation
+  if (window._liveMode) return;  // In live mode, prices only change when TBA posts real results
   teams.forEach(team => {
     const drift = (Math.random() - 0.5) * 2;
     const meanReversion = (team.basePrice - team.price) * 0.02;
